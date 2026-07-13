@@ -42,9 +42,14 @@ function renderCommandCenter(activeEvent) {
     container.innerHTML = `
         <div class="toolbar fade-in stagger-1">
             <p>Monitoring Event: <strong>${activeEvent.title}</strong></p>
-            <button class="btn btn-primary" onclick="fetchLiveData(${activeEvent.id})">
-                <i class="material-icons-round">refresh</i> Force Refresh
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="fetchLiveData(${activeEvent.id})">
+                    <i class="material-icons-round">refresh</i> Force Refresh
+                </button>
+                <button class="btn btn-secondary" onclick="openUpdateMetricsModal(${activeEvent.id})">
+                    <i class="material-icons-round">edit</i> Update Metrics
+                </button>
+            </div>
         </div>
 
         <div class="stats-grid fade-in stagger-2">
@@ -179,5 +184,71 @@ function setLight(id, status) {
     } else {
         light.classList.add('healthy');
         label.textContent = "Optimal";
+    }
+}
+
+window.openUpdateMetricsModal = async function(eventId) {
+    try {
+        const live = await api.get(`/operations/live/${eventId}`);
+        const data = live.metrics;
+        const html = `
+            <form id="update-metrics-form">
+                <div class="form-group">
+                    <label>Zone A Crowd Density (%)</label>
+                    <input type="number" id="um-zone-a" class="form-control" value="${data.crowd_density['Zone A (Main Hall)']}" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Zone B Crowd Density (%)</label>
+                    <input type="number" id="um-zone-b" class="form-control" value="${data.crowd_density['Zone B (Food Court)']}" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Entrance Queue (%)</label>
+                    <input type="number" id="um-entrance" class="form-control" value="${data.crowd_density['Entrance']}" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Food Inventory (%)</label>
+                    <input type="number" id="um-food" class="form-control" value="${data.food_inventory_percent}" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Active Staff</label>
+                    <input type="number" id="um-staff" class="form-control" value="${data.active_staff}" min="0">
+                </div>
+                <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Updates</button>
+                </div>
+            </form>
+        `;
+        openModal("Update Live Metrics", html);
+
+        document.getElementById('update-metrics-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                zone_a_crowd: parseInt(document.getElementById('um-zone-a').value),
+                zone_b_crowd: parseInt(document.getElementById('um-zone-b').value),
+                entrance_queue: parseInt(document.getElementById('um-entrance').value),
+                food_inventory_percent: parseInt(document.getElementById('um-food').value),
+                staff_active: parseInt(document.getElementById('um-staff').value)
+            };
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            try {
+                await api.post(`/operations/live/${eventId}`, payload);
+                closeModal();
+                if (typeof showToast === 'function') showToast("Live metrics updated successfully", "success");
+                fetchLiveData(eventId); // Refresh right away
+            } catch (err) {
+                console.error(err);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Updates';
+                if (typeof showToast === 'function') showToast("Failed to update metrics", "error");
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        if (typeof showToast === 'function') showToast("Failed to load current metrics", "error");
     }
 }

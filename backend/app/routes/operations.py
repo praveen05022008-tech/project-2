@@ -7,6 +7,7 @@ from cerebras.cloud.sdk import Cerebras
 
 from app.database import get_db
 from app.models import Event, Vendor, EventVendor
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/operations", tags=["Operations"])
 
@@ -24,7 +25,7 @@ def get_live_data(event_id: int, db: Session = Depends(get_db)):
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     
-    # Generate somewhat stable random data that drifts
+    # Initialize state if not present
     state = SIMULATION_STATE.get(event_id, {
         "zone_a_crowd": 20,
         "zone_b_crowd": 15,
@@ -32,12 +33,6 @@ def get_live_data(event_id: int, db: Session = Depends(get_db)):
         "food_inventory_percent": 100,
         "staff_active": 10
     })
-    
-    # Drift
-    state["zone_a_crowd"] = max(0, min(100, state["zone_a_crowd"] + random.randint(-5, 15)))
-    state["zone_b_crowd"] = max(0, min(100, state["zone_b_crowd"] + random.randint(-10, 10)))
-    state["entrance_queue"] = max(0, min(100, state["entrance_queue"] + random.randint(-5, 20)))
-    state["food_inventory_percent"] = max(0, state["food_inventory_percent"] - random.randint(0, 5))
     
     SIMULATION_STATE[event_id] = state
     
@@ -55,6 +50,30 @@ def get_live_data(event_id: int, db: Session = Depends(get_db)):
             "vendor_status": "All Arrived" if state["food_inventory_percent"] > 20 else "Restock Delayed"
         }
     }
+
+class LiveStateUpdate(BaseModel):
+    zone_a_crowd: int
+    zone_b_crowd: int
+    entrance_queue: int
+    food_inventory_percent: int
+    staff_active: int
+
+@router.post("/live/{event_id}")
+def update_live_data(event_id: int, update: LiveStateUpdate, db: Session = Depends(get_db)):
+    """Manually update real-time operational data for an event."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    SIMULATION_STATE[event_id] = {
+        "zone_a_crowd": max(0, min(100, update.zone_a_crowd)),
+        "zone_b_crowd": max(0, min(100, update.zone_b_crowd)),
+        "entrance_queue": max(0, min(100, update.entrance_queue)),
+        "food_inventory_percent": max(0, min(100, update.food_inventory_percent)),
+        "staff_active": max(0, update.staff_active)
+    }
+    
+    return {"status": "success", "message": "Live data updated successfully"}
 
 @router.get("/predict/{event_id}")
 def get_ai_prediction(event_id: int, db: Session = Depends(get_db)):
