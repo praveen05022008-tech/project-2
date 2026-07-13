@@ -178,6 +178,27 @@ function debounce(fn, delay = 300) {
     };
 }
 
+// ─── Authentication ────────────────────────────────────────────────────────────
+
+function checkAuth() {
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    const loginPage = document.getElementById('login-page');
+    const appContainer = document.getElementById('app');
+    
+    if (isLoggedIn === 'true') {
+        if (loginPage) loginPage.style.display = 'none';
+        if (appContainer) appContainer.style.display = 'flex';
+        
+        // Route from hash
+        const hash = window.location.hash.slice(1);
+        const initialPage = hash && pages[hash] ? hash : 'dashboard';
+        setTimeout(() => navigateTo(initialPage), 50);
+    } else {
+        if (loginPage) loginPage.style.display = 'flex';
+        if (appContainer) appContainer.style.display = 'none';
+    }
+}
+
 // ─── Initialization ────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -211,12 +232,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Route from hash
-    const hash = window.location.hash.slice(1);
-    const initialPage = hash && pages[hash] ? hash : 'dashboard';
+    // Auth handlers
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if (user === 'admin' && pass === 'admin123') {
+                localStorage.setItem('isLoggedIn', 'true');
+                showToast('Logged in successfully', 'success');
+                checkAuth();
+            } else {
+                showToast('Invalid ID or Password', 'error');
+            }
+        });
+    }
 
-    // Small delay to ensure page scripts are loaded
-    setTimeout(() => navigateTo(initialPage), 50);
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('isLoggedIn');
+            checkAuth();
+            showToast('Logged out', 'info');
+        });
+    }
+
+    // Check authentication on load
+    checkAuth();
 });
 
 // Handle browser back/forward
