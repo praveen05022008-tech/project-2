@@ -2,8 +2,11 @@
    EventPro — Main Application (Router, API Service, Utilities)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const API_BASE = 'http://localhost:8000/api';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// Change this to your actual Render backend URL once it's deployed
+const PRODUCTION_API_URL = 'https://event-management-zef1.onrender.com/api';
 
+const API_BASE = isLocal ? 'http://localhost:8000/api' : PRODUCTION_API_URL;
 // ─── API Service ───────────────────────────────────────────────────────────────
 
 const api = {
