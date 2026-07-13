@@ -5,11 +5,11 @@
 /* ─── CSS Custom Properties (Design Tokens) ─────────────────────────────── */
 :root {
     /* Core Colors */
-    --bg-primary: #06080f;
-    --bg-secondary: #0c1020;
-    --bg-tertiary: #121830;
-    --bg-card: rgba(18, 24, 48, 0.7);
-    --bg-card-hover: rgba(24, 32, 64, 0.8);
+    --bg-primary: #0f1115;
+    --bg-secondary: #16181d;
+    --bg-tertiary: #20232a;
+    --bg-card: rgba(22, 24, 29, 0.75);
+    --bg-card-hover: rgba(32, 35, 42, 0.85);
 
     /* Accent Colors */
     --accent-primary: #667eea;
@@ -43,7 +43,7 @@
     --shadow-glow: 0 0 30px rgba(102, 126, 234, 0.15);
 
     /* Glassmorphism */
-    --glass-bg: rgba(12, 16, 32, 0.6);
+    --glass-bg: rgba(22, 24, 29, 0.65);
     --glass-border: rgba(102, 126, 234, 0.12);
     --glass-blur: blur(20px);
 
