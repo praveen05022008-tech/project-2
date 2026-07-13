@@ -55,7 +55,7 @@ function showToast(message, type = 'success') {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
-
+// Trail commit text msg
 // ─── Modal System ──────────────────────────────────────────────────────────────
 
 function openModal(title, bodyHtml) {
