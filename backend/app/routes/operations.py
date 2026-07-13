@@ -1,0 +1,121 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+import random
+import os
+import json
+from cerebras.cloud.sdk import Cerebras
+
+from app.database import get_db
+from app.models import Event, Vendor, EventVendor
+
+router = APIRouter(prefix="/api/operations", tags=["Operations"])
+
+# Initialize Cerebras
+api_key = os.getenv("CEREBRAS_API_KEY", "")
+client = Cerebras(api_key=api_key) if api_key else None
+
+# A simple state holder for the simulation
+SIMULATION_STATE = {}
+
+@router.get("/live/{event_id}")
+def get_live_data(event_id: int, db: Session = Depends(get_db)):
+    """Simulate real-time operational data for an event."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Generate somewhat stable random data that drifts
+    state = SIMULATION_STATE.get(event_id, {
+        "zone_a_crowd": 20,
+        "zone_b_crowd": 15,
+        "entrance_queue": 5,
+        "food_inventory_percent": 100,
+        "staff_active": 10
+    })
+    
+    # Drift
+    state["zone_a_crowd"] = max(0, min(100, state["zone_a_crowd"] + random.randint(-5, 15)))
+    state["zone_b_crowd"] = max(0, min(100, state["zone_b_crowd"] + random.randint(-10, 10)))
+    state["entrance_queue"] = max(0, min(100, state["entrance_queue"] + random.randint(-5, 20)))
+    state["food_inventory_percent"] = max(0, state["food_inventory_percent"] - random.randint(0, 5))
+    
+    SIMULATION_STATE[event_id] = state
+    
+    return {
+        "event_id": event_id,
+        "timestamp": "now",
+        "metrics": {
+            "crowd_density": {
+                "Zone A (Main Hall)": state["zone_a_crowd"],
+                "Zone B (Food Court)": state["zone_b_crowd"],
+                "Entrance": state["entrance_queue"]
+            },
+            "food_inventory_percent": state["food_inventory_percent"],
+            "active_staff": state["staff_active"],
+            "vendor_status": "All Arrived" if state["food_inventory_percent"] > 20 else "Restock Delayed"
+        }
+    }
+
+@router.get("/predict/{event_id}")
+def get_ai_prediction(event_id: int, db: Session = Depends(get_db)):
+    """Analyze live simulation data using Gemini AI and return recommendations."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    live_data = get_live_data(event_id, db)
+    
+    prompt = f"""
+    You are the AI engine for EventSphere, an intelligent event command center.
+    Analyze the following real-time data for the event '{event.title}':
+    {json.dumps(live_data, indent=2)}
+    
+    Identify any operational risks (crowds > 70 are high risk, food < 30 is high risk).
+    Respond strictly in valid JSON format with the following structure:
+    {{
+      "overall_health": "Healthy" | "Warning" | "Critical",
+      "issues": [
+         {{"severity": "High", "description": "...", "recommendation": "..."}}
+      ],
+      "resource_optimization": "..."
+    }}
+    Ensure the output is raw JSON without markdown blocks.
+    """
+    
+    if not client:
+        return {
+            "overall_health": "Warning",
+            "issues": [
+                {
+                    "description": "Cerebras API key not configured.",
+                    "severity": "Medium",
+                    "recommendation": "Add CEREBRAS_API_KEY to .env to enable AI predictions."
+                }
+            ],
+            "resource_optimization": "AI optimization unavailable."
+        }
+        
+    try:
+        response = client.chat.completions.create(
+            model="gpt-oss-120b",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.choices[0].message.content.strip()
+        if text.startswith("```json"):
+            text = text.replace("```json", "", 1)
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+        
+        return json.loads(text.strip())
+    except Exception as e:
+        return {
+            "overall_health": "Error",
+            "issues": [
+                {
+                    "description": f"AI Engine Error: {str(e)}",
+                    "severity": "Medium",
+                    "recommendation": "Check API logs"
+                }
+            ],
+            "resource_optimization": "Processing failed."
+        }

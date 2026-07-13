@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EventPro - Professional Event Management Platform. Manage events, vendors, and clients with AI-powered assistance.">
+    <title>EventPro | Event Management Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container" id="app">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <span class="material-icons-round">celebration</span>
+                    </div>
+                    <div class="logo-text">
+                        <h1>EventPro</h1>
+                        <span class="logo-subtitle">Management</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="#dashboard" class="nav-link active" data-page="dashboard" id="nav-dashboard">
+                            <span class="material-icons-round">dashboard</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#command-center" class="nav-link" data-page="command-center" id="nav-command-center">
+                            <span class="material-icons-round">satellite_alt</span>
+                            <span class="nav-text">Command Center</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#budget" class="nav-link" data-page="budget" id="nav-budget">
+                            <span class="material-icons-round">pie_chart</span>
+                            <span class="nav-text">Budget AI</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#analytics" class="nav-link" data-page="analytics" id="nav-analytics">
+                            <span class="material-icons-round">trending_up</span>
+                            <span class="nav-text">Analytics</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#reports" class="nav-link" data-page="reports" id="nav-reports">
+                            <span class="material-icons-round">description</span>
+                            <span class="nav-text">Reports</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#events" class="nav-link" data-page="events" id="nav-events">
+                            <span class="material-icons-round">event</span>
+                            <span class="nav-text">Events</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#vendors" class="nav-link" data-page="vendors" id="nav-vendors">
+                            <span class="material-icons-round">store</span>
+                            <span class="nav-text">Vendors</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#ai-center" class="nav-link" data-page="ai-center" id="nav-ai-center">
+                            <span class="material-icons-round">smart_toy</span>
+                            <span class="nav-text">AI Center</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#settings" class="nav-link" data-page="settings" id="nav-settings">
+                            <span class="material-icons-round">settings</span>
+                            <span class="nav-text">Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <span class="material-icons-round">person</span>
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name">Admin</span>
+                        <span class="user-role">Event Manager</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content">
+            <!-- Top Bar -->
+            <header class="topbar" id="topbar">
+                <button class="menu-toggle" id="menu-toggle">
+                    <span class="material-icons-round">menu</span>
+                </button>
+                <div class="topbar-title">
+                    <h2 id="page-title">Dashboard</h2>
+                    <span class="topbar-date" id="topbar-date"></span>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn-icon" id="refresh-btn" title="Refresh">
+                        <span class="material-icons-round">refresh</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page Content Container -->
+            <div class="page-container" id="page-container">
+                <!-- Pages will be rendered here dynamically -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button class="modal-close" id="modal-close">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Dynamic modal content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/pages/dashboard.js"></script>
+    <script src="js/pages/events.js"></script>
+    <script src="js/pages/vendors.js"></script>
+    <script src="js/pages/settings.js"></script>
+    <script src="js/pages/ai-center.js"></script>
+    <script src="js/pages/command-center.js"></script>
+    <script src="js/pages/budget.js"></script>
+    <script src="js/pages/analytics.js"></script>
+    <script src="js/pages/reports.js"></script>
+</body>
+</html>

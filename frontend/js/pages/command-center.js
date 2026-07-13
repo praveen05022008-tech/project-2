@@ -1,0 +1,183 @@
+registerPage('command-center', initCommandCenter);
+
+let ccPollInterval = null;
+
+async function initCommandCenter() {
+    const container = document.getElementById('page-container');
+    container.innerHTML = `
+        <div class="loading-state"><div class="spinner"></div></div>
+    `;
+
+    try {
+        const events = await api.get('/events');
+        const activeEvent = events.length > 0 ? events[0] : null;
+
+        if (!activeEvent) {
+            container.innerHTML = `<div class="card"><div class="card-body">No active events found.</div></div>`;
+            return;
+        }
+
+        renderCommandCenter(activeEvent);
+        
+        // Start polling simulation
+        fetchLiveData(activeEvent.id);
+        if (ccPollInterval) clearInterval(ccPollInterval);
+        ccPollInterval = setInterval(() => fetchLiveData(activeEvent.id), 10000);
+        
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load Command Center data.</div></div>`;
+    }
+}
+
+// Cleanup interval if user navigates away
+window.addEventListener('hashchange', () => {
+    if (window.location.hash !== '#command-center' && ccPollInterval) {
+        clearInterval(ccPollInterval);
+    }
+});
+
+function renderCommandCenter(activeEvent) {
+    const container = document.getElementById('page-container');
+    container.innerHTML = `
+        <div class="toolbar fade-in stagger-1">
+            <p>Monitoring Event: <strong>${activeEvent.title}</strong></p>
+            <button class="btn btn-primary" onclick="fetchLiveData(${activeEvent.id})">
+                <i class="material-icons-round">refresh</i> Force Refresh
+            </button>
+        </div>
+
+        <div class="stats-grid fade-in stagger-2">
+            <div class="traffic-light-card" id="health-crowd">
+                <div class="traffic-light healthy"></div>
+                <h4>Crowd Health</h4>
+                <p class="stat-label">Normal</p>
+            </div>
+            <div class="traffic-light-card" id="health-food">
+                <div class="traffic-light healthy"></div>
+                <h4>Food Inventory</h4>
+                <p class="stat-label">Adequate</p>
+            </div>
+            <div class="traffic-light-card" id="health-vendor">
+                <div class="traffic-light healthy"></div>
+                <h4>Vendors</h4>
+                <p class="stat-label">All Arrived</p>
+            </div>
+            <div class="traffic-light-card" id="health-overall">
+                <div class="traffic-light healthy"></div>
+                <h4>Overall System</h4>
+                <p class="stat-label">Optimal</p>
+            </div>
+        </div>
+
+        <div class="form-grid fade-in stagger-3">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="material-icons-round" style="vertical-align: middle;">sensors</i> AI Risk Predictions</h3>
+                </div>
+                <div class="card-body" id="ai-predictions-feed">
+                    <p class="text-muted">Waiting for AI analysis...</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="material-icons-round" style="vertical-align: middle;">map</i> Crowd Heatmap</h3>
+                </div>
+                <div class="card-body" id="crowd-heatmap">
+                    <p class="text-muted">Loading live zones...</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function fetchLiveData(eventId) {
+    try {
+        const live = await api.get(`/operations/live/${eventId}`);
+        const prediction = await api.get(`/operations/predict/${eventId}`);
+        updateCCUI(live, prediction);
+    } catch (error) {
+        console.error("Failed to fetch live data", error);
+    }
+}
+
+function updateCCUI(live, prediction) {
+    // Update Crowd Heatmap
+    const heatmapEl = document.getElementById('crowd-heatmap');
+    if (heatmapEl) {
+        let heatmapHtml = '';
+        for (const [zone, density] of Object.entries(live.metrics.crowd_density)) {
+            let color = 'rgba(67, 233, 123, 0.1)';
+            if (density > 60) color = 'rgba(245, 166, 35, 0.1)';
+            if (density > 80) color = 'rgba(245, 87, 108, 0.1)';
+            
+            heatmapHtml += `
+                <div class="heatmap-zone" style="background: ${color};">
+                    <strong>${zone}</strong>
+                    <span>${density}% Capacity</span>
+                </div>
+            `;
+        }
+        heatmapEl.innerHTML = heatmapHtml;
+    }
+
+    // Update AI Predictions
+    const feedEl = document.getElementById('ai-predictions-feed');
+    if (feedEl && prediction.issues) {
+        if (prediction.issues.length === 0) {
+            feedEl.innerHTML = `<div class="ai-alert-card"><p>✅ No current risks detected. Running smoothly.</p></div>`;
+        } else {
+            let issuesHtml = '';
+            prediction.issues.forEach(issue => {
+                const critical = issue.severity.toLowerCase() === 'high' ? 'critical' : '';
+                issuesHtml += `
+                    <div class="ai-alert-card ${critical}">
+                        <strong>[${issue.severity}] ${issue.description}</strong>
+                        <p class="text-muted" style="margin-top:5px;">💡 AI Action: ${issue.recommendation}</p>
+                    </div>
+                `;
+            });
+            feedEl.innerHTML = issuesHtml;
+        }
+        
+        if (prediction.resource_optimization) {
+            feedEl.innerHTML += `
+                <div class="ai-alert-card" style="border-left-color: #4facfe;">
+                    <strong>Resource Optimizer</strong>
+                    <p class="text-muted">${prediction.resource_optimization}</p>
+                </div>
+            `;
+        }
+    }
+
+    setLight('overall', prediction.overall_health);
+    if (live.metrics.food_inventory_percent < 30) setLight('food', 'Warning');
+    else setLight('food', 'Healthy');
+    
+    let maxCrowd = Math.max(...Object.values(live.metrics.crowd_density));
+    if (maxCrowd > 80) setLight('crowd', 'Critical');
+    else if (maxCrowd > 60) setLight('crowd', 'Warning');
+    else setLight('crowd', 'Healthy');
+}
+
+function setLight(id, status) {
+    const el = document.getElementById(`health-${id}`);
+    if (!el) return;
+    const light = el.querySelector('.traffic-light');
+    const label = el.querySelector('.stat-label');
+    
+    light.className = 'traffic-light';
+    const s = status.toLowerCase();
+    
+    if (s.includes('warn') || s.includes('medium')) {
+        light.classList.add('warning');
+        label.textContent = "Warning";
+    } else if (s.includes('crit') || s.includes('high') || s.includes('over')) {
+        light.classList.add('critical');
+        label.textContent = "Critical";
+    } else {
+        light.classList.add('healthy');
+        label.textContent = "Optimal";
+    }
+}

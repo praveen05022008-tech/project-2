@@ -1,0 +1,63 @@
+import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+from app.database import create_tables
+from app.routes import dashboard, events, vendors, settings, ai_chat, operations, budget, analytics, reports
+
+# Create FastAPI application
+app = FastAPI(
+    title="EventPro Management API",
+    description="Professional Event Management SaaS Platform API",
+    version="1.0.0",
+)
+
+# CORS middleware - allow frontend to connect
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register routers
+app.include_router(dashboard.router)
+app.include_router(events.router)
+app.include_router(vendors.router)
+app.include_router(settings.router)
+app.include_router(ai_chat.router)
+app.include_router(operations.router)
+app.include_router(budget.router)
+app.include_router(analytics.router)
+app.include_router(reports.router)
+
+
+@app.on_event("startup")
+def on_startup():
+    """Create database tables on startup."""
+    print("[*] Starting EventPro Management API...")
+    try:
+        create_tables()
+        print("[OK] Database tables created/verified successfully")
+    except Exception as e:
+        print(f"[WARN] Database setup warning: {e}")
+
+
+@app.get("/")
+def root():
+    return {
+        "name": "EventPro Management API",
+        "version": "1.0.0",
+        "status": "running",
+        "docs": "/docs",
+    }
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
