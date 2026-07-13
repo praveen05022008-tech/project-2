@@ -23,6 +23,7 @@ async function initEvents() {
                 <option value="">All Types</option>
                 ${eventTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
             </select>
+            <input type="date" class="filter-select" id="event-filter-date" title="Filter by date" style="padding-right: 14px;">
             <div class="toolbar-spacer"></div>
             <button class="btn btn-primary" id="btn-add-event">
                 <span class="material-icons-round">add</span>
@@ -41,6 +42,7 @@ async function initEvents() {
     document.getElementById('event-search').addEventListener('input', debounce(loadEvents, 400));
     document.getElementById('event-filter-status').addEventListener('change', loadEvents);
     document.getElementById('event-filter-type').addEventListener('change', loadEvents);
+    document.getElementById('event-filter-date').addEventListener('change', loadEvents);
 
     await loadEvents();
 }
@@ -50,11 +52,15 @@ async function loadEvents() {
     const search = document.getElementById('event-search')?.value || '';
     const status = document.getElementById('event-filter-status')?.value || '';
     const type = document.getElementById('event-filter-type')?.value || '';
+    const date = document.getElementById('event-filter-date')?.value || '';
 
     let query = '/events?';
     if (search) query += `search=${encodeURIComponent(search)}&`;
     if (status) query += `status=${encodeURIComponent(status)}&`;
     if (type) query += `event_type=${encodeURIComponent(type)}&`;
+    if (date) {
+        query += `date_from=${encodeURIComponent(date)}&date_to=${encodeURIComponent(date)}&`;
+    }
 
     try {
         const events = await api.get(query);
