@@ -19,7 +19,10 @@ the APK if you change the icon, name, permissions, or the server URL.
 ## Build the APK (cloud — no Android Studio needed)
 
 1. **Push the repo to GitHub** (branch `hasim` or `main`).
-2. Go to **Actions → "Build Android APK" → Run workflow** (or push a tag `v1.0.0`).
+2. It builds automatically on **every push to `main`** (and on version tags `v1.0.0`),
+   or run it manually: **Actions → "Build Android APK" → Run workflow**.
+   > Note: you rarely need to rebuild — the APK loads the live site, so content/UI
+   > updates reach installed apps automatically. Rebuild only for icon/name/permission/URL changes.
 3. GitHub installs Capacitor, wraps the app, compiles a debug APK, and publishes it
    to the **`apk-latest`** release. Stable download URL:
    ```

@@ -29,8 +29,20 @@
                     <span class="material-icons-round">celebration</span>
                 </div>
                 <h2>Welcome to EventPro</h2>
-                <p>Sign in to manage your events</p>
+                <p id="auth-subtitle">The AI-powered event management platform</p>
             </div>
+
+            <div class="login-features">
+                <span><span class="material-icons-round">auto_awesome</span> AI-powered</span>
+                <span><span class="material-icons-round">confirmation_number</span> Ticketing</span>
+                <span><span class="material-icons-round">qr_code_scanner</span> Live check-in</span>
+            </div>
+
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" data-tab="signin">Sign In</button>
+                <button type="button" class="auth-tab" data-tab="signup">Create Account</button>
+            </div>
+
             <form id="login-form">
                 <div class="form-group">
                     <label for="username">Email</label>
@@ -52,7 +64,29 @@
                 </button>
             </form>
 
-            <div class="login-demo">
+            <form id="register-form" style="display:none;">
+                <div class="form-group">
+                    <label for="reg-email">Email</label>
+                    <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" class="form-input" placeholder="At least 6 characters" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-role">I am a…</label>
+                    <select id="reg-role" class="form-select">
+                        <option value="ATTENDEE">Attendee</option>
+                        <option value="VENDOR">Vendor</option>
+                        <option value="SPONSOR">Sponsor</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px;">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="login-demo" id="login-demo">
                 <div class="login-demo-title">
                     <span>Quick demo login</span>
                 </div>
@@ -253,6 +287,9 @@
     <script src="js/lib/jsqr.min.js"></script>
     <!-- Razorpay checkout (used only when a real gateway is configured) -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!-- PDF export (report download) -->
+    <script src="js/lib/html2canvas.min.js"></script>
+    <script src="js/lib/jspdf.umd.min.js"></script>
     <script src="js/app.js"></script>
     <script src="js/pages/checkin.js"></script>
     <script src="js/pages/commerce.js"></script>

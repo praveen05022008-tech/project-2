@@ -340,13 +340,17 @@ async function loadRoleDashboard(pageName) {
 }
 
 // Lightweight dependency-free SVG donut chart.
-// segments: [{label, value, color}]. Returns an SVG string with a legend.
-function svgDonut(segments, centerLabel = '') {
+// segments: [{label, value, color}].  opts: {textColor, mutedColor, fmt, centerValue}
+function svgDonut(segments, centerLabel = '', opts = {}) {
+    const textColor = opts.textColor || 'var(--text-primary)';
+    const mutedColor = opts.mutedColor || 'var(--text-muted)';
+    const fmt = opts.fmt || (v => v);
     const total = segments.reduce((s, x) => s + (x.value || 0), 0);
     const R = 60, C = 2 * Math.PI * R, cx = 80, cy = 80, sw = 22;
     if (total <= 0) {
-        return `<div style="text-align:center;color:var(--text-muted);padding:20px;">No data to chart.</div>`;
+        return `<div style="text-align:center;color:${mutedColor};padding:20px;">No data to chart.</div>`;
     }
+    const centerValue = opts.centerValue != null ? opts.centerValue : fmt(total);
     let offset = 0;
     const rings = segments.filter(s => s.value > 0).map(s => {
         const frac = s.value / total;
@@ -360,18 +364,38 @@ function svgDonut(segments, centerLabel = '') {
     const legend = segments.map(s => `
         <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-bottom:6px;">
             <span style="width:10px;height:10px;border-radius:3px;background:${s.color};display:inline-block;"></span>
-            <span style="color:var(--text-secondary);flex:1;">${s.label}</span>
-            <span style="color:var(--text-primary);font-weight:600;">${s.value}</span>
+            <span style="color:${mutedColor};flex:1;">${s.label}</span>
+            <span style="color:${textColor};font-weight:600;">${fmt(s.value)}</span>
         </div>`).join('');
     return `
         <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-            <svg viewBox="0 0 160 160" width="160" height="160" style="flex-shrink:0;">
+            <svg viewBox="0 0 160 160" width="150" height="150" style="flex-shrink:0;">
                 ${rings}
-                <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text-primary)" font-size="26" font-weight="700">${total}</text>
-                <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="var(--text-muted)" font-size="11">${centerLabel}</text>
+                <text x="${cx}" y="${cy - 2}" text-anchor="middle" fill="${textColor}" font-size="20" font-weight="700">${centerValue}</text>
+                <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="${mutedColor}" font-size="11">${centerLabel}</text>
             </svg>
-            <div style="flex:1;min-width:150px;">${legend}</div>
+            <div style="flex:1;min-width:140px;">${legend}</div>
         </div>`;
+}
+
+// Radial progress gauge. pct 0-100+. opts: {color, track, textColor, mutedColor, label, centerText}
+function svgGauge(pct, opts = {}) {
+    const p = Math.max(0, Math.min(100, pct || 0));
+    const R = 60, C = 2 * Math.PI * R, cx = 80, cy = 80, sw = 16;
+    const color = opts.color || '#667eea';
+    const track = opts.track || 'rgba(150,160,200,0.18)';
+    const textColor = opts.textColor || 'var(--text-primary)';
+    const mutedColor = opts.mutedColor || 'var(--text-muted)';
+    const dash = `${(p / 100 * C).toFixed(2)} ${(C - p / 100 * C).toFixed(2)}`;
+    const centerText = opts.centerText != null ? opts.centerText : `${Math.round(pct)}%`;
+    return `
+        <svg viewBox="0 0 160 160" width="150" height="150">
+            <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${track}" stroke-width="${sw}"></circle>
+            <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${color}" stroke-width="${sw}"
+                stroke-dasharray="${dash}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="round"></circle>
+            <text x="${cx}" y="${cy - 2}" text-anchor="middle" fill="${textColor}" font-size="24" font-weight="800">${centerText}</text>
+            <text x="${cx}" y="${cy + 18}" text-anchor="middle" fill="${mutedColor}" font-size="11">${opts.label || ''}</text>
+        </svg>`;
 }
 
 // Download an array of rows as a CSV file (client-side, no backend needed).
@@ -676,6 +700,41 @@ document.addEventListener('DOMContentLoaded', () => {
             loginForm.requestSubmit();
         });
     });
+
+    // Sign In / Create Account tab switching
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const isSignup = tab.dataset.tab === 'signup';
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t === tab));
+            document.getElementById('login-form').style.display = isSignup ? 'none' : 'block';
+            document.getElementById('register-form').style.display = isSignup ? 'block' : 'none';
+            const demo = document.getElementById('login-demo');
+            if (demo) demo.style.display = isSignup ? 'none' : 'block';
+            const sub = document.getElementById('auth-subtitle');
+            if (sub) sub.textContent = isSignup ? 'Create your free account' : 'The AI-powered event management platform';
+        });
+    });
+
+    // Registration (self-service for Attendee / Vendor / Sponsor)
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+            try {
+                await api.post('/auth/register', { email, password, role });
+                // Auto sign-in after successful registration
+                const res = await api.post('/auth/login', { email, password });
+                localStorage.setItem('jwt_token', res.access_token);
+                showToast('Account created — welcome!', 'success');
+                await checkAuth();
+            } catch (err) {
+                showToast(err.message || 'Registration failed', 'error');
+            }
+        });
+    }
 
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
