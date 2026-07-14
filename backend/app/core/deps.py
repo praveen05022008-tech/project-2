@@ -43,6 +43,27 @@ def get_current_user(
     return user
 
 
+def scope_events_to_tenant(query, user: "models.User"):
+    """Restrict an Event query to the user's tenant for managing roles.
+    SUPER_ADMIN sees everything; consumer roles (attendee/sponsor/vendor) read
+    across tenants (they browse/attend any organizer's events)."""
+    if user.role in ("ORGANIZER", "STAFF") and user.tenant_id is not None:
+        return query.filter(models.Event.tenant_id == user.tenant_id)
+    return query
+
+
+def assert_event_manageable(user: "models.User", event) -> None:
+    """Raise 403 if a managing user tries to act on another tenant's event."""
+    if user.role == "SUPER_ADMIN":
+        return
+    if user.role in ("ORGANIZER", "STAFF"):
+        if user.tenant_id is not None and event.tenant_id != user.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This event belongs to another organization",
+            )
+
+
 def require_roles(*roles: str):
     """Dependency factory that allows only the given roles."""
     allowed: Iterable[str] = set(roles)

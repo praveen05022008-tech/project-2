@@ -124,6 +124,8 @@ function openModal(title, bodyHtml) {
 
 function closeModal() {
     document.getElementById('modal-overlay').classList.remove('active');
+    // Release the camera if a QR scan was running in the modal.
+    if (typeof stopQrScan === 'function') stopQrScan();
 }
 
 // Close modal on overlay click or close button
@@ -144,10 +146,12 @@ const pages = {
     events: { title: 'Events', init: null },
     vendors: { title: 'Vendors', init: null },
     'ai-center': { title: 'AI Center', init: null },
+    'copilot': { title: 'AI Copilot', init: null },
     'command-center': { title: 'Command Center', init: null },
     'budget': { title: 'Budget AI', init: null },
     'analytics': { title: 'Analytics', init: null },
     'reports': { title: 'Reports', init: null },
+    'users': { title: 'User Management', init: null },
     'audit-logs': { title: 'Audit Logs', init: null },
     settings: { title: 'Settings', init: null },
     'dashboard-staff': { title: 'Staff Dashboard', init: null },
@@ -335,6 +339,57 @@ async function loadRoleDashboard(pageName) {
     }
 }
 
+// Lightweight dependency-free SVG donut chart.
+// segments: [{label, value, color}]. Returns an SVG string with a legend.
+function svgDonut(segments, centerLabel = '') {
+    const total = segments.reduce((s, x) => s + (x.value || 0), 0);
+    const R = 60, C = 2 * Math.PI * R, cx = 80, cy = 80, sw = 22;
+    if (total <= 0) {
+        return `<div style="text-align:center;color:var(--text-muted);padding:20px;">No data to chart.</div>`;
+    }
+    let offset = 0;
+    const rings = segments.filter(s => s.value > 0).map(s => {
+        const frac = s.value / total;
+        const dash = `${(frac * C).toFixed(2)} ${(C - frac * C).toFixed(2)}`;
+        const circle = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${s.color}" stroke-width="${sw}"
+            stroke-dasharray="${dash}" stroke-dashoffset="${(-offset * C).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"
+            stroke-linecap="butt"></circle>`;
+        offset += frac;
+        return circle;
+    }).join('');
+    const legend = segments.map(s => `
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;margin-bottom:6px;">
+            <span style="width:10px;height:10px;border-radius:3px;background:${s.color};display:inline-block;"></span>
+            <span style="color:var(--text-secondary);flex:1;">${s.label}</span>
+            <span style="color:var(--text-primary);font-weight:600;">${s.value}</span>
+        </div>`).join('');
+    return `
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <svg viewBox="0 0 160 160" width="160" height="160" style="flex-shrink:0;">
+                ${rings}
+                <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--text-primary)" font-size="26" font-weight="700">${total}</text>
+                <text x="${cx}" y="${cy + 16}" text-anchor="middle" fill="var(--text-muted)" font-size="11">${centerLabel}</text>
+            </svg>
+            <div style="flex:1;min-width:150px;">${legend}</div>
+        </div>`;
+}
+
+// Download an array of rows as a CSV file (client-side, no backend needed).
+function exportCSV(filename, headers, rows) {
+    const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const csv = [headers.map(esc).join(','), ...rows.map(r => r.map(esc).join(','))].join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Exported ' + filename, 'success');
+}
+
 function debounce(fn, delay = 300) {
     let timer;
     return (...args) => {
@@ -362,6 +417,7 @@ async function checkAuth() {
             document.querySelector('.user-role').textContent = user.role;
 
             applyRoleBasedAccess(user.role);
+            loadNotifications();
 
             // Route from hash
             const hash = window.location.hash.slice(1);
@@ -398,14 +454,132 @@ function applyRoleBasedAccess(role) {
             if (['dashboard', 'events', 'ai-center'].includes(link)) show = true;
         }
 
-        // Audit Logs are visible to Super Admin only.
-        if (link === 'audit-logs' && role !== 'SUPER_ADMIN') show = false;
+        // Audit Logs and User Management are visible to Super Admin only.
+        if ((link === 'audit-logs' || link === 'users') && role !== 'SUPER_ADMIN') show = false;
+        // Copilot is for managers (Super Admin / Organizer) only.
+        if (link === 'copilot' && !['SUPER_ADMIN', 'ORGANIZER'].includes(role)) show = false;
 
         item.style.display = show ? 'block' : 'none';
     });
 }
 
 // ─── Initialization ────────────────────────────────────────────────────────────
+
+// Android APK download link. After the first "Build Android APK" workflow run,
+// set this to your release URL, e.g.
+//   https://github.com/<owner>/<repo>/releases/download/apk-latest/eventpro.apk
+// The button then appears on the login screen (hidden inside the installed app).
+const APK_URL = '';
+
+function setupApkButton() {
+    const btn = document.getElementById('download-apk');
+    if (!btn) return;
+    const insideApp = !!window.Capacitor;   // running inside the wrapped Android app
+    if (APK_URL && !insideApp) {
+        btn.href = APK_URL;
+        btn.style.display = 'flex';
+    }
+}
+
+// ─── Feedback / rating ───────────────────────────────────────────────────────
+function openFeedbackForm(eventId, title) {
+    openModal('Rate: ' + title, `
+        <form id="fb-form">
+            <div class="form-group">
+                <label>Your rating</label>
+                <div id="fb-stars" style="display:flex;gap:6px;font-size:32px;cursor:pointer;">
+                    ${[1,2,3,4,5].map(i => `<span class="material-icons-round fb-star" data-v="${i}" style="color:#f5a623;">star</span>`).join('')}
+                </div>
+                <input type="hidden" id="fb-rating" value="5">
+            </div>
+            <div class="form-group">
+                <label>Comments (optional)</label>
+                <textarea id="fb-comment" class="form-textarea" placeholder="What did you think?"></textarea>
+            </div>
+            <div class="modal-footer" style="padding:0;border:none;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary"><span class="material-icons-round">send</span> Submit</button>
+            </div>
+        </form>`);
+    const paint = (v) => document.querySelectorAll('.fb-star').forEach(s =>
+        s.textContent = (parseInt(s.dataset.v) <= v ? 'star' : 'star_border'));
+    paint(5);
+    document.querySelectorAll('.fb-star').forEach(s => s.addEventListener('click', () => {
+        document.getElementById('fb-rating').value = s.dataset.v;
+        paint(parseInt(s.dataset.v));
+    }));
+    document.getElementById('fb-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/feedback', {
+                event_id: eventId,
+                rating: parseInt(document.getElementById('fb-rating').value),
+                comment: document.getElementById('fb-comment').value.trim() || null,
+            });
+            showToast('Thanks for your feedback!', 'success');
+            closeModal();
+        } catch (err) { showToast(err.message || 'Failed to submit', 'error'); }
+    });
+}
+
+// ─── In-app notifications ────────────────────────────────────────────────────
+let _notifs = [];
+
+function _notifReadSet() {
+    try { return new Set(JSON.parse(localStorage.getItem('notif_read') || '[]')); }
+    catch (_) { return new Set(); }
+}
+
+async function loadNotifications() {
+    if (!localStorage.getItem('jwt_token')) return;
+    try {
+        _notifs = await api.get('/notifications');
+    } catch (_) { _notifs = []; }
+    const read = _notifReadSet();
+    const unread = _notifs.filter(n => !read.has(n.id)).length;
+    const badge = document.getElementById('notif-badge');
+    if (badge) {
+        badge.textContent = unread > 9 ? '9+' : String(unread);
+        badge.style.display = unread > 0 ? 'flex' : 'none';
+    }
+}
+
+function renderNotifDropdown() {
+    const dd = document.getElementById('notif-dropdown');
+    if (!dd) return;
+    const read = _notifReadSet();
+    if (!_notifs.length) {
+        dd.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-muted);">No notifications</div>`;
+    } else {
+        dd.innerHTML = _notifs.map(n => `
+            <div class="notif-item ${n.level} ${read.has(n.id) ? '' : 'unread'}">
+                <h5>${n.title}</h5>
+                ${n.message ? `<p>${n.message}</p>` : ''}
+                <time>${n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</time>
+            </div>`).join('');
+    }
+}
+
+function toggleNotifDropdown() {
+    const dd = document.getElementById('notif-dropdown');
+    if (!dd) return;
+    const opening = !dd.classList.contains('open');
+    dd.classList.toggle('open', opening);
+    if (opening) {
+        renderNotifDropdown();
+        // Mark all currently-loaded notifications as read
+        localStorage.setItem('notif_read', JSON.stringify(_notifs.map(n => n.id)));
+        const badge = document.getElementById('notif-badge');
+        if (badge) badge.style.display = 'none';
+    }
+}
+
+// Register the service worker (PWA / installable + offline shell).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => { /* non-fatal */ });
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Set current date in topbar
@@ -440,6 +614,16 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebarEl.classList.contains('open') ? closeSidebar() : openSidebar();
     });
     if (backdropEl) backdropEl.addEventListener('click', closeSidebar);
+
+    // Notifications bell
+    const notifBtn = document.getElementById('notif-btn');
+    if (notifBtn) {
+        notifBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleNotifDropdown(); });
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('notif-dropdown');
+            if (dd && dd.classList.contains('open') && !e.target.closest('.notif-wrap')) dd.classList.remove('open');
+        });
+    }
 
     // Refresh button
     document.getElementById('refresh-btn').addEventListener('click', () => {
@@ -503,6 +687,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.hash = '';
         });
     }
+
+    // Show the Android app download button if configured
+    setupApkButton();
 
     // Check authentication on load
     checkAuth();

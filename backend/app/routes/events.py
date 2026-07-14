@@ -5,7 +5,8 @@ from typing import Optional, List
 from datetime import date
 
 from app.database import get_db
-from app.core.deps import require_roles
+from app.core.deps import require_roles, get_current_user, scope_events_to_tenant, assert_event_manageable
+from app import models
 from app.models import Event, EventVendor, Vendor
 from app.schemas import (
     EventCreate, EventUpdate, EventResponse,
@@ -30,9 +31,10 @@ def list_events(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    """List all events with optional filters."""
-    query = db.query(Event)
+    """List events (scoped to the caller's tenant for organizer/staff)."""
+    query = scope_events_to_tenant(db.query(Event), current_user)
 
     if status:
         query = query.filter(Event.status == status)
@@ -64,22 +66,28 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
     return EventResponse.model_validate(event)
 
 
-@router.post("", response_model=EventResponse, status_code=201, dependencies=[Depends(manage_events)])
-def create_event(event_data: EventCreate, db: Session = Depends(get_db)):
-    """Create a new event."""
+@router.post("", response_model=EventResponse, status_code=201)
+def create_event(event_data: EventCreate, db: Session = Depends(get_db),
+                 current_user: models.User = Depends(manage_events)):
+    """Create a new event (assigned to the creator's tenant)."""
     event = Event(**event_data.model_dump())
+    # Scope the event to the organizer/staff's tenant.
+    if current_user.role != "SUPER_ADMIN":
+        event.tenant_id = current_user.tenant_id
     db.add(event)
     db.commit()
     db.refresh(event)
     return EventResponse.model_validate(event)
 
 
-@router.put("/{event_id}", response_model=EventResponse, dependencies=[Depends(manage_events)])
-def update_event(event_id: int, event_data: EventUpdate, db: Session = Depends(get_db)):
+@router.put("/{event_id}", response_model=EventResponse)
+def update_event(event_id: int, event_data: EventUpdate, db: Session = Depends(get_db),
+                 current_user: models.User = Depends(manage_events)):
     """Update an existing event."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    assert_event_manageable(current_user, event)
 
     update_data = event_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -90,12 +98,14 @@ def update_event(event_id: int, event_data: EventUpdate, db: Session = Depends(g
     return EventResponse.model_validate(event)
 
 
-@router.delete("/{event_id}", dependencies=[Depends(manage_events)])
-def delete_event(event_id: int, db: Session = Depends(get_db)):
+@router.delete("/{event_id}")
+def delete_event(event_id: int, db: Session = Depends(get_db),
+                 current_user: models.User = Depends(manage_events)):
     """Delete an event."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    assert_event_manageable(current_user, event)
 
     db.delete(event)
     db.commit()
@@ -133,16 +143,18 @@ def get_event_vendors(event_id: int, db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/{event_id}/vendors", response_model=EventVendorResponse, status_code=201, dependencies=[Depends(manage_events)])
+@router.post("/{event_id}/vendors", response_model=EventVendorResponse, status_code=201)
 def assign_vendor_to_event(
     event_id: int,
     data: EventVendorCreate,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(manage_events),
 ):
     """Assign a vendor to an event."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    assert_event_manageable(current_user, event)
 
     vendor = db.query(Vendor).filter(Vendor.id == data.vendor_id).first()
     if not vendor:
@@ -180,13 +192,17 @@ def assign_vendor_to_event(
     )
 
 
-@router.delete("/{event_id}/vendors/{assignment_id}", dependencies=[Depends(manage_events)])
+@router.delete("/{event_id}/vendors/{assignment_id}")
 def remove_vendor_from_event(
     event_id: int,
     assignment_id: int,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(manage_events),
 ):
     """Remove a vendor assignment from an event."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event:
+        assert_event_manageable(current_user, event)
     assignment = db.query(EventVendor).filter(
         EventVendor.id == assignment_id,
         EventVendor.event_id == event_id,

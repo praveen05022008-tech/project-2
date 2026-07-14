@@ -74,6 +74,9 @@
 html {
     font-size: 14px;
     scroll-behavior: smooth;
+    /* Render native controls (date/time pickers, their icons, dropdowns,
+       scrollbars) in dark mode so they're visible on the dark UI. */
+    color-scheme: dark;
 }
 
 body {
@@ -402,10 +405,7 @@ input, textarea, select { font-family: inherit; }
     transition: var(--transition-base);
 }
 
-.card:hover {
-    border-color: var(--border-glow);
-    box-shadow: var(--shadow-glow);
-}
+/* Hover lift/glow intentionally disabled — cards are static. */
 
 .card-header {
     padding: 20px 24px;
@@ -461,11 +461,7 @@ input, textarea, select { font-family: inherit; }
 .stat-card:nth-child(5)::before { background: var(--accent-gradient-6); }
 .stat-card:nth-child(6)::before { background: var(--accent-gradient-3); }
 
-.stat-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--border-glow);
-    box-shadow: var(--shadow-glow);
-}
+/* Hover lift/glow intentionally disabled — stat cards are static. */
 
 .stat-card-header {
     display: flex;
@@ -1058,11 +1054,7 @@ input, textarea, select { font-family: inherit; }
     height: 3px;
 }
 
-.vendor-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--border-glow);
-    box-shadow: var(--shadow-glow);
-}
+/* Hover lift/glow intentionally disabled — vendor cards are static. */
 
 .vendor-card-top {
     display: flex;
@@ -1501,6 +1493,35 @@ input, textarea, select { font-family: inherit; }
 }
 .health-row strong { color: var(--text-primary); font-weight: 600; }
 
+/* ─── Notifications bell ─────────────────────────────────────────────────── */
+.notif-wrap { position: relative; }
+.notif-badge {
+    position: absolute; top: -2px; right: -2px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    background: #f5576c; color: #fff; font-size: 0.62rem; font-weight: 700;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+}
+.notif-dropdown {
+    position: absolute; top: calc(100% + 10px); right: 0;
+    width: 340px; max-width: 90vw; max-height: 420px; overflow-y: auto;
+    background: var(--bg-secondary); border: 1px solid var(--border-color);
+    border-radius: var(--border-radius); box-shadow: var(--shadow-lg);
+    padding: 8px; display: none; z-index: 200;
+}
+.notif-dropdown.open { display: block; }
+.notif-item {
+    padding: 12px; border-radius: 10px; margin-bottom: 6px;
+    border-left: 3px solid var(--accent-primary); background: var(--bg-tertiary);
+}
+.notif-item.unread { background: rgba(102,126,234,0.10); }
+.notif-item.success { border-left-color: #43e97b; }
+.notif-item.warning { border-left-color: #f5a623; }
+.notif-item.critical { border-left-color: #f5576c; }
+.notif-item h5 { font-size: 0.88rem; color: var(--text-primary); margin-bottom: 2px; }
+.notif-item p { font-size: 0.8rem; color: var(--text-secondary); }
+.notif-item time { font-size: 0.7rem; color: var(--text-muted); }
+
 /* ─── Event picker (Budget / Analytics / Reports / Command Center) ──────── */
 .event-picker {
     display: flex;
@@ -1903,5 +1924,5 @@ input, textarea, select { font-family: inherit; }
     border-radius: inherit;
 }
 .card-glow:hover::after {
-    opacity: 0.5;
+    opacity: 0;   /* hover glow disabled */
 }

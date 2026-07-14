@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="EventPro - Professional Event Management Platform. Manage events, vendors, and clients with AI-powered assistance.">
     <title>EventPro | Event Management Platform</title>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EventPro">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -71,6 +80,9 @@
 
             <div class="login-footer">
                 <p>Demo password for all roles: <strong>password123</strong></p>
+                <a id="download-apk" href="#" target="_blank" rel="noopener" class="btn btn-secondary" style="display:none;width:100%;justify-content:center;margin-top:14px;">
+                    <span class="material-icons-round">android</span> Get the Android App
+                </a>
             </div>
         </div>
     </div>
@@ -141,6 +153,18 @@
                         </a>
                     </li>
                     <li>
+                        <a href="#copilot" class="nav-link" data-page="copilot" id="nav-copilot">
+                            <span class="material-icons-round">auto_awesome</span>
+                            <span class="nav-text">Copilot</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#users" class="nav-link" data-page="users" id="nav-users">
+                            <span class="material-icons-round">manage_accounts</span>
+                            <span class="nav-text">Users</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="#audit-logs" class="nav-link" data-page="audit-logs" id="nav-audit-logs">
                             <span class="material-icons-round">fact_check</span>
                             <span class="nav-text">Audit Logs</span>
@@ -186,6 +210,13 @@
                     <span class="topbar-date" id="topbar-date"></span>
                 </div>
                 <div class="topbar-actions">
+                    <div class="notif-wrap">
+                        <button class="btn-icon" id="notif-btn" title="Notifications">
+                            <span class="material-icons-round">notifications</span>
+                            <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+                        </button>
+                        <div class="notif-dropdown" id="notif-dropdown"></div>
+                    </div>
                     <button class="btn-icon" id="refresh-btn" title="Refresh">
                         <span class="material-icons-round">refresh</span>
                     </button>
@@ -218,7 +249,13 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Scripts -->
+    <script src="js/lib/qrcode.min.js"></script>
+    <script src="js/lib/jsqr.min.js"></script>
+    <!-- Razorpay checkout (used only when a real gateway is configured) -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/pages/checkin.js"></script>
+    <script src="js/pages/commerce.js"></script>
     <script src="js/pages/dashboard.js"></script>
     <script src="js/pages/dashboard-staff.js"></script>
     <script src="js/pages/dashboard-vendor.js"></script>
@@ -234,5 +271,7 @@
     <script src="js/pages/analytics.js"></script>
     <script src="js/pages/reports.js"></script>
     <script src="js/pages/audit.js"></script>
+    <script src="js/pages/users.js"></script>
+    <script src="js/pages/copilot.js"></script>
 </body>
 </html>

@@ -59,6 +59,19 @@ class AssignmentStatus(str, enum.Enum):
 
 # ─── Models ─────────────────────────────────────────────────────────────────────
 
+class Tenant(Base):
+    """An organization (tenant) in the SaaS. Organizers and their staff/events
+    belong to a tenant; data is isolated per tenant. SUPER_ADMIN spans all."""
+    __tablename__ = "tenants"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<Tenant(id={self.id}, name='{self.name}')>"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -67,6 +80,9 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(50), default=Role.ATTENDEE.value)
     is_active = Column(Boolean, default=True)
+    # Null for platform-wide roles (SUPER_ADMIN) and cross-tenant consumers
+    # (ATTENDEE / SPONSOR who interact with events from any organizer).
+    tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
@@ -81,6 +97,7 @@ class Event(Base):
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True)
     title = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     event_type = Column(String(50), default=EventType.OTHER.value)
@@ -178,6 +195,115 @@ class Settings(Base):
 
     def __repr__(self):
         return f"<Settings(company_name='{self.company_name}')>"
+
+
+class TicketType(Base):
+    """A purchasable ticket tier for an event (e.g. General, VIP)."""
+    __tablename__ = "ticket_types"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=True)
+    price = Column(Float, default=0.0)
+    quantity_total = Column(Integer, default=0)     # 0 = unlimited
+    quantity_sold = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<TicketType(event_id={self.event_id}, name='{self.name}', price={self.price})>"
+
+
+class Order(Base):
+    """An attendee's purchase/registration for tickets to an event."""
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    ticket_type_id = Column(Integer, ForeignKey("ticket_types.id", ondelete="SET NULL"), nullable=True)
+    buyer_email = Column(String(255), nullable=False, index=True)
+    buyer_name = Column(String(255), nullable=True)
+    quantity = Column(Integer, default=1)
+    unit_price = Column(Float, default=0.0)
+    total_amount = Column(Float, default=0.0)
+    status = Column(String(20), default="PENDING")   # PENDING | PAID | CANCELLED | REFUNDED
+    payment_ref = Column(String(100), nullable=True)     # captured payment id
+    gateway_order_id = Column(String(100), nullable=True)  # gateway (Razorpay) order id
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def __repr__(self):
+        return f"<Order(id={self.id}, buyer='{self.buyer_email}', status='{self.status}')>"
+
+
+class Ticket(Base):
+    """A FastPass ticket issued to an attendee for a specific event."""
+    __tablename__ = "tickets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(40), unique=True, nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    attendee_email = Column(String(255), nullable=False, index=True)
+    attendee_name = Column(String(255), nullable=True)
+    tier = Column(String(100), nullable=True)                     # ticket type name
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
+    checked_in = Column(Boolean, default=False)
+    issued_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<Ticket(code='{self.code}', event_id={self.event_id})>"
+
+
+class CheckIn(Base):
+    """A single scan/check-in event — powers live crowd density, sponsor booth
+    engagement, and ticket validation."""
+    __tablename__ = "check_ins"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    ticket_code = Column(String(40), nullable=True, index=True)
+    attendee_email = Column(String(255), nullable=True)
+    scan_type = Column(String(20), default="ENTRY")   # ENTRY | BOOTH | SESSION
+    zone = Column(String(100), nullable=True)          # e.g. "Gate A", "Zone B", "Booth 4"
+    sponsor_email = Column(String(255), nullable=True)  # booth attribution
+    lead_captured = Column(Boolean, default=False)      # sponsor lead opt-in
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def __repr__(self):
+        return f"<CheckIn(event_id={self.event_id}, type='{self.scan_type}', zone='{self.zone}')>"
+
+
+class Notification(Base):
+    """In-app notification / announcement. Delivered to users matching any of the
+    (nullable) targets; a fully-null target is a global broadcast."""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=True)
+    level = Column(String(20), default="info")          # info | success | warning | critical
+    target_role = Column(String(50), nullable=True)     # e.g. "ORGANIZER"
+    target_tenant_id = Column(Integer, nullable=True)   # limit to one tenant
+    target_email = Column(String(255), nullable=True)   # limit to one user
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def __repr__(self):
+        return f"<Notification(title='{self.title}')>"
+
+
+class Feedback(Base):
+    """Post-event attendee feedback / satisfaction rating."""
+    __tablename__ = "feedback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    attendee_email = Column(String(255), nullable=True)
+    rating = Column(Integer, default=5)                 # 1-5 satisfaction
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def __repr__(self):
+        return f"<Feedback(event_id={self.event_id}, rating={self.rating})>"
 
 
 class AuditLog(Base):

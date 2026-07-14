@@ -60,6 +60,9 @@ function renderCommandCenter(activeEvent) {
                 <button class="btn btn-secondary" onclick="openUpdateMetricsModal(${activeEvent.id})">
                     <i class="material-icons-round">edit</i> Update Metrics
                 </button>
+                <button class="btn btn-secondary" onclick="openScanModal(${activeEvent.id})">
+                    <i class="material-icons-round">qr_code_scanner</i> Record Check-in
+                </button>
             </div>
         </div>
 

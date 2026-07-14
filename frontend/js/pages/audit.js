@@ -49,6 +49,9 @@ function renderAuditShell(summary) {
             <button class="btn btn-secondary" onclick="loadAuditRows()">
                 <span class="material-icons-round">refresh</span> Refresh
             </button>
+            <button class="btn btn-secondary" onclick="exportAuditCSV()">
+                <span class="material-icons-round">download</span> Export
+            </button>
         </div>
 
         <div class="card card-glow fade-in stagger-3" style="margin-top:16px;">
@@ -89,6 +92,19 @@ function auditStatusBadge(code) {
     else if (code === 403 || code === 401) cls = 'badge-cancelled';
     else if (code >= 400) cls = 'badge-progress';
     return `<span class="badge ${cls}">${code ?? '—'}</span>`;
+}
+
+async function exportAuditCSV() {
+    const params = new URLSearchParams();
+    if (auditFilters.role) params.set('role', auditFilters.role);
+    if (auditFilters.method) params.set('method', auditFilters.method);
+    if (auditFilters.search) params.set('search', auditFilters.search);
+    params.set('limit', '500');
+    try {
+        const data = await api.get(`/audit-logs?${params.toString()}`);
+        exportCSV('audit-logs.csv', ['Time', 'User', 'Role', 'Action', 'Method', 'Path', 'Status', 'IP'],
+            data.logs.map(l => [l.created_at, l.user_email, l.user_role, l.action, l.method, l.path, l.status_code, l.ip_address]));
+    } catch (err) { showToast('Export failed', 'error'); }
 }
 
 async function loadAuditRows() {

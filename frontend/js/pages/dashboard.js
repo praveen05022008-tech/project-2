@@ -215,7 +215,17 @@ function renderStatusChart(breakdown, total) {
         'Cancelled': 'cancelled',
     };
 
+    const donutColors = {
+        'Upcoming': '#667eea', 'In Progress': '#f5a623',
+        'Completed': '#43e97b', 'Cancelled': '#f5576c',
+    };
+    const donut = svgDonut(
+        breakdown.map(i => ({ label: i.status, value: i.count, color: donutColors[i.status] || '#667eea' })),
+        'events'
+    );
+
     return `
+        <div style="margin-bottom:18px;">${donut}</div>
         <div class="status-chart">
             ${breakdown.map(item => {
                 const pct = total > 0 ? ((item.count / total) * 100).toFixed(0) : 0;
