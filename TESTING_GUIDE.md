@@ -340,6 +340,107 @@ Matrix of who can modify what (all reads allowed for any logged-in user):
 
 ---
 
+## 16b. Check-in / QR subsystem (real, data-backed)
+
+A single check-in system powers three features with **real data** (no mock numbers):
+
+- **Attendee FastPass:** the Attendee dashboard shows a real **QR ticket** for the
+  next event (ticket code like `FP-XXXXXXXX`, stored in the DB).
+- **Staff live crowd density:** the Staff dashboard's *Live Entries* and *Busiest
+  Zone* come from real entry scans, and the *Crowd Density Alert* fires when a zone
+  gets busy.
+- **Sponsor engagement:** the Sponsor dashboard's *Booth Scans* and *Leads
+  Captured* come from real booth scans.
+
+**Test the loop:**
+1. Log in as **Staff** (or Organizer) → **Command Center** → **Record Check-in**.
+2. Choose the event, `ENTRY`, zone `Gate A`, optionally paste an attendee's
+   FastPass code → Record. (For `BOOTH` scans you can tick "Lead captured".)
+3. Go to the **Staff dashboard** → *Live Entries* / *Busiest Zone* increased.
+4. Record a few `BOOTH` scans → the **Sponsor dashboard** *Booth Scans* / *Leads*
+   increase. Every number is a real DB row.
+
+## 16c. Commerce — ticketing, payments & revenue
+
+**Real payments (Razorpay) when configured, simulated otherwise.**
+- Leave `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` blank → **simulated checkout**
+  (no real charge) — the flow still issues tickets end-to-end.
+- Set **test keys** (`rzp_test_...`) on the backend → the buy button opens the real
+  **Razorpay checkout**; pay with a [test card](https://razorpay.com/docs/payments/payments/test-card-details/)
+  (e.g. `4111 1111 1111 1111`, any future expiry/CVV). The backend **verifies the
+  payment signature** before issuing tickets. Set live keys for production.
+
+Real end-to-end ticket sales:
+- **Buy (Attendee/Sponsor/Vendor):** Events tab → the 🎟 icon → pick a tier +
+  quantity → **Pay** → tickets are issued and appear as the Attendee **FastPass QR**.
+- **Manage (Organizer/Admin):** Events tab → the 🎫 icon → add ticket tiers, see
+  live **ticket revenue**, tickets sold, and the orders list.
+- **Revenue is real:** paid orders roll up into "Ticket Sales" on the Super Admin
+  and Organizer dashboards.
+
+## 16d. Admin: User Management (Super Admin only)
+- **Users** tab → create users (any role), change role, enable/disable, reset
+  password, delete. Guards prevent removing the last Super Admin or disabling
+  yourself. Export the user list to CSV.
+
+## 16e. Exports & PWA
+- **CSV export** buttons on Events, Users, and Audit Logs.
+- **Reports** has an Export/Print (Save-as-PDF) button.
+- **Install as an app:** open the site in Chrome/Edge/Android → browser menu →
+  *Install app* (works offline for the shell; API calls always go to network).
+
+## 16f. Automated tests
+A pytest suite covers auth, role permissions, events/vendors CRUD, dashboards,
+check-in, commerce, user management, budget/analytics/reports, and audit. It runs
+against an isolated SQLite DB (never your TiDB) with AI disabled for determinism.
+
+```bash
+cd backend
+pip install -r requirements.txt
+pytest -q
+```
+Expected: **26 passed**. Run this before every deploy to see what works / breaks.
+
+## 16g. Multi-tenant isolation
+Organizers only see/manage **their own organization's** events; Super Admin sees all.
+- Log in as **organizer@eventpro.com** (EventPro Elite) → 8 events.
+- Log in as **organizer2@eventpro.com** (Stellar Events) → only the 2 "Stellar" events.
+- Super Admin → all events. Attendees browse all (to buy tickets).
+- Cross-tenant edits are rejected (403).
+
+## 16h. Camera QR scanner
+Command Center → **Record Check-in** → tap the **scanner icon** next to Ticket Code →
+allow camera → point at a FastPass QR. The code auto-fills; submit to record.
+(Works in the browser over HTTPS and in the Android app — camera permission is bundled.)
+
+## 16i. Observability, integrations & backups
+- **Health:** `GET /health` returns DB status; every response carries `X-Response-Time-ms`.
+- **Error monitoring:** set `SENTRY_DSN` to stream errors to Sentry (optional).
+- **Webhooks:** set `WEBHOOK_URL` → EventPro POSTs on `order.paid` and `lead.captured`
+  (wire into Zapier/Make/CRM/Slack).
+- **Calendar:** event details → **Add to Calendar** downloads an `.ics` (Google/Outlook/Apple).
+- **Backups:** Users tab → **Backup** (Super Admin) downloads a full JSON snapshot;
+  or run `python backend/backup.py` on a schedule.
+
+## 16j. Public event pages + guest checkout
+- As Organizer/Admin: Events → the **share icon** copies a public link like
+  `/e/<id>`. Open it in a **logged-out** browser → event page with tiers → register
+  with name/email → pay (Razorpay or simulated) → get a ticket code. No login needed.
+
+## 16k. AI Copilot (Super Admin / Organizer)
+- **Copilot** tab → ask in plain English: *"show my stats"*, *"how much revenue?"*,
+  *"create a Corporate event for client Acme on 2026-12-01, budget 500000"*, or
+  *"write a marketing post for my next event"*. It executes real actions (scoped to
+  your tenant) and answers with live data. Works without an AI key (limited).
+
+## 16l. Feedback + notifications
+- **Feedback:** attendees → Events → the **rate icon** → star rating + comment.
+  Organizers see the summary (avg, distribution, NPS, **AI sentiment**) on the
+  Reports page.
+- **Notifications:** the **bell** in the top bar shows unread announcements + system
+  alerts (e.g. a new ticket sale). Organizers/Admins can post announcements via
+  `POST /api/notifications`.
+
 ## 17. Quick smoke-test checklist
 
 - [ ] Each of the 6 demo logins works and lands on the right dashboard
@@ -351,4 +452,7 @@ Matrix of who can modify what (all reads allowed for any logged-in user):
 - [ ] Vendors CRUD works for Admin; tab hidden for Staff
 - [ ] Budget/Analytics/Reports/Command Center event pickers switch events
 - [ ] AI Center replies (real or fallback)
+- [ ] Budget AI shows breakdown, utilization, cost/attendee, risks (works without API key)
+- [ ] Attendee FastPass QR renders for the next event
+- [ ] Recording a check-in updates Staff live crowd + Sponsor booth scans
 - [ ] Mobile hamburger + backdrop work

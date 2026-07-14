@@ -6,67 +6,63 @@ from typing import Optional, List
 
 from app.database import get_db
 from app.core.deps import get_current_user
-from app.models import Event, Vendor, EventVendor, User
+from app.models import Event, Vendor, EventVendor, User, CheckIn, Order
+from app.routes.checkin import live_aggregates
+
+
+def _ticket_revenue(db):
+    return float(db.query(func.coalesce(func.sum(Order.total_amount), 0.0))
+                 .filter(Order.status == "PAID").scalar() or 0)
 from app.schemas import DashboardResponse, DashboardStats, StatusBreakdown, EventResponse
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @router.get("/stats", response_model=DashboardResponse)
-def get_dashboard_stats(db: Session = Depends(get_db)):
-    """Get comprehensive dashboard statistics."""
+def get_dashboard_stats(db: Session = Depends(get_db),
+                        current_user: User = Depends(get_current_user)):
+    """Get dashboard statistics (scoped to the caller's tenant for organizer/staff)."""
     today = date.today()
     current_month = today.month
     current_year = today.year
 
-    # Today's events
-    todays_events = db.query(func.count(Event.id)).filter(
-        Event.event_date == today
-    ).scalar() or 0
+    # Tenant scope: organizers/staff only see their own tenant's events.
+    tid = current_user.tenant_id if current_user.role in ("ORGANIZER", "STAFF") else None
 
-    # Upcoming events
-    upcoming_events = db.query(func.count(Event.id)).filter(
-        Event.status == "Upcoming",
-        Event.event_date >= today
-    ).scalar() or 0
+    def ev(*conditions):
+        q = db.query(func.count(Event.id))
+        if tid is not None:
+            q = q.filter(Event.tenant_id == tid)
+        for c in conditions:
+            q = q.filter(c)
+        return q.scalar() or 0
 
-    # Total events this month
-    total_events_this_month = db.query(func.count(Event.id)).filter(
+    todays_events = ev(Event.event_date == today)
+    upcoming_events = ev(Event.status == "Upcoming", Event.event_date >= today)
+    total_events_this_month = ev(
         extract("month", Event.event_date) == current_month,
-        extract("year", Event.event_date) == current_year
-    ).scalar() or 0
+        extract("year", Event.event_date) == current_year,
+    )
+    completed_events = ev(Event.status == "Completed")
+    cancelled_events = ev(Event.status == "Cancelled")
 
-    # Completed events
-    completed_events = db.query(func.count(Event.id)).filter(
-        Event.status == "Completed"
-    ).scalar() or 0
+    # Active vendors (shared marketplace — not tenant-scoped)
+    active_vendors = db.query(func.count(Vendor.id)).filter(Vendor.is_active == True).scalar() or 0
 
-    # Cancelled events
-    cancelled_events = db.query(func.count(Event.id)).filter(
-        Event.status == "Cancelled"
-    ).scalar() or 0
+    rev_q = db.query(func.sum(Event.budget))
+    total_q = db.query(func.count(Event.id))
+    recent_q = db.query(Event)
+    status_q = db.query(Event.status, func.count(Event.id).label("count"))
+    if tid is not None:
+        rev_q = rev_q.filter(Event.tenant_id == tid)
+        total_q = total_q.filter(Event.tenant_id == tid)
+        recent_q = recent_q.filter(Event.tenant_id == tid)
+        status_q = status_q.filter(Event.tenant_id == tid)
 
-    # Active vendors
-    active_vendors = db.query(func.count(Vendor.id)).filter(
-        Vendor.is_active == True
-    ).scalar() or 0
-
-    # Total revenue (sum of all event budgets)
-    total_revenue = db.query(func.sum(Event.budget)).scalar() or 0.0
-
-    # Total events
-    total_events = db.query(func.count(Event.id)).scalar() or 0
-
-    # Recent events (last 5)
-    recent_events = db.query(Event).order_by(
-        Event.created_at.desc()
-    ).limit(5).all()
-
-    # Status breakdown
-    status_counts = db.query(
-        Event.status,
-        func.count(Event.id).label("count")
-    ).group_by(Event.status).all()
+    total_revenue = rev_q.scalar() or 0.0
+    total_events = total_q.scalar() or 0
+    recent_events = recent_q.order_by(Event.created_at.desc()).limit(5).all()
+    status_counts = status_q.group_by(Event.status).all()
 
     status_breakdown = [
         StatusBreakdown(status=s.status, count=s.count)
@@ -150,7 +146,8 @@ def _super_admin_view(db, today):
             _card("Total Accounts", str(total_users), "Registered users", "group", "var(--accent-primary)"),
             _card("Events Managed", str(total_events), "Across all tenants", "event", "var(--accent-tertiary)"),
             _card("Active Vendors", str(active_vendors), "In marketplace", "store", "#43e97b"),
-            _card("Revenue Tracked", _fmt_inr(total_revenue), "Total event budgets", "payments", "#f5a623"),
+            _card("Budget Tracked", _fmt_inr(total_revenue), "Total event budgets", "payments", "#f5a623"),
+            _card("Ticket Sales", _fmt_inr(_ticket_revenue(db)), "Paid ticket revenue", "confirmation_number", "#4facfe"),
         ],
         "list": {
             "title": "Recent Account Signups",
@@ -164,37 +161,51 @@ def _staff_view(db, today):
     upcoming = db.query(func.count(Event.id)).filter(
         Event.status == "Upcoming", Event.event_date >= today
     ).scalar() or 0
-    in_progress = db.query(func.count(Event.id)).filter(Event.status == "In Progress").scalar() or 0
     pending_vendors = db.query(func.count(EventVendor.id)).filter(
         EventVendor.status == "Pending"
     ).scalar() or 0
-    confirmed_vendors = db.query(func.count(EventVendor.id)).filter(
-        EventVendor.status == "Confirmed"
-    ).scalar() or 0
+
+    # Live crowd density comes from real check-ins on the most active event
+    # (in progress, else the soonest upcoming).
+    active = (db.query(Event).filter(Event.status == "In Progress").order_by(Event.event_date).first()
+              or db.query(Event).filter(Event.event_date >= today).order_by(Event.event_date).first())
+    agg = live_aggregates(db, active.id) if active else None
+
+    live_entries = agg["total_entries"] if agg else 0
+    busiest = agg["busiest_zone"] if agg else None
+    busiest_label = f"{busiest['zone']} ({busiest['count']})" if busiest else "—"
 
     focus = db.query(Event).filter(Event.event_date >= today).order_by(Event.event_date).limit(6).all()
     rows = [[e.title, e.event_date.strftime("%d %b %Y"), e.venue or "—", e.status] for e in focus]
 
+    # Crowd alert driven by the real busiest-zone count.
     note = None
-    if focus:
-        nxt = focus[0]
+    if active and busiest and busiest["count"] >= 15:
         note = {
-            "title": "Next Up",
-            "icon": "flag",
+            "title": "Crowd Density Alert",
+            "icon": "warning",
+            "accent": "#f5576c",
+            "text": f"High footfall at {busiest['zone']} ({busiest['count']} check-ins) for "
+                    f"{active.title}. Consider redirecting arrivals to a quieter zone.",
+        }
+    elif active:
+        note = {
+            "title": "Live Monitoring",
+            "icon": "sensors",
             "accent": "var(--accent-primary)",
-            "text": f"{nxt.title} at {nxt.venue or 'venue TBD'} on {nxt.event_date.strftime('%d %b %Y')}. "
-                    f"{pending_vendors} vendor confirmation(s) still pending across events.",
+            "text": f"Monitoring {active.title}: {live_entries} entries so far across "
+                    f"{len(agg['zones']) if agg else 0} zone(s). {pending_vendors} vendor confirmation(s) pending.",
         }
 
     return {
         "role": "STAFF",
         "heading": "Staff Command View",
-        "subheading": "Operations and assignments that need attention.",
+        "subheading": "Live operations and assignments that need attention.",
         "cards": [
             _card("Upcoming Events", str(upcoming), "Scheduled ahead", "event_upcoming", "var(--accent-primary)"),
-            _card("In Progress", str(in_progress), "Happening now", "bolt", "#f5a623"),
-            _card("Pending Confirmations", str(pending_vendors), "Vendors to confirm", "pending_actions", "#f5576c"),
-            _card("Confirmed Vendors", str(confirmed_vendors), "Locked in", "task_alt", "#43e97b"),
+            _card("Live Entries", str(live_entries), active.title if active else "No active event", "login", "#f5a623"),
+            _card("Busiest Zone", busiest_label, "Highest footfall", "groups", "#f5576c"),
+            _card("Pending Confirmations", str(pending_vendors), "Vendors to confirm", "pending_actions", "#43e97b"),
         ],
         "list": {
             "title": "Upcoming Events",
@@ -271,7 +282,13 @@ def _sponsor_view(db):
     sponsored = [e for e in events if (e.marketing_budget or 0) > 0]
     roi_values = [e.expected_roi for e in sponsored if e.expected_roi]
     avg_roi = (sum(roi_values) / len(roi_values)) if roi_values else 0
-    total_reach = sum(e.expected_attendance or 0 for e in events)
+
+    # Real booth engagement from check-ins (BOOTH scans + lead opt-ins).
+    booth_scans = db.query(func.count(CheckIn.id)).filter(CheckIn.scan_type == "BOOTH").scalar() or 0
+    leads = db.query(func.count(CheckIn.id)).filter(
+        CheckIn.scan_type == "BOOTH", CheckIn.lead_captured == True
+    ).scalar() or 0
+    conversion = (leads / booth_scans * 100) if booth_scans else 0
 
     top = sorted(sponsored, key=lambda e: (e.expected_roi or 0), reverse=True)[:6]
     rows = [[
@@ -284,12 +301,12 @@ def _sponsor_view(db):
     return {
         "role": "SPONSOR",
         "heading": "Sponsor ROI Dashboard",
-        "subheading": "Investment performance across sponsored events.",
+        "subheading": "Live booth engagement and investment performance.",
         "cards": [
-            _card("Sponsored Events", str(len(sponsored)), "With marketing spend", "campaign", "var(--accent-primary)"),
+            _card("Booth Scans", str(booth_scans), "Live QR scans at booths", "qr_code_scanner", "var(--accent-primary)"),
+            _card("Leads Captured", str(leads), f"{conversion:.0f}% scan-to-lead", "contacts", "#43e97b"),
             _card("Marketing Spend", _fmt_inr(total_marketing), "Total committed", "payments", "#f5a623"),
-            _card("Avg Expected ROI", f"{avg_roi:.1f}x", "Across sponsored events", "trending_up", "#43e97b"),
-            _card("Total Reach", f"{total_reach:,}", "Expected attendance", "groups", "var(--accent-tertiary)"),
+            _card("Avg Expected ROI", f"{avg_roi:.1f}x", "Across sponsored events", "trending_up", "var(--accent-tertiary)"),
         ],
         "list": {
             "title": "Top Events by ROI",
@@ -350,7 +367,8 @@ def _organizer_view(db, today):
             _card("Total Events", str(total_events), "", "event", "var(--accent-primary)"),
             _card("Upcoming", str(upcoming), "", "event_upcoming", "var(--accent-tertiary)"),
             _card("Active Vendors", str(active_vendors), "", "store", "#43e97b"),
-            _card("Revenue", _fmt_inr(revenue), "", "payments", "#f5a623"),
+            _card("Budget", _fmt_inr(revenue), "", "payments", "#f5a623"),
+            _card("Ticket Sales", _fmt_inr(_ticket_revenue(db)), "Paid ticket revenue", "confirmation_number", "#4facfe"),
         ],
         "list": {"title": "", "columns": [], "rows": []},
     }

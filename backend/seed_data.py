@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal, engine, Base
-from app.models import Event, Vendor, EventVendor, Settings, ChatMessage, User
+from app.models import Event, Vendor, EventVendor, Settings, ChatMessage, User, CheckIn, Ticket, TicketType, Order, Tenant
 from app.models import EventType, EventStatus, VendorCategory, AssignmentStatus, Role
 from app.core.security import get_password_hash
 
@@ -34,13 +34,29 @@ def seed_data():
         db.add(settings)
         print("Settings seeded.")
 
-    # 1.5 Add Users (6 Test Accounts)
+    # 1.2 Add Tenants (organizations) — demonstrates multi-tenant isolation
+    tenant_a = db.query(Tenant).filter(Tenant.name == "EventPro Elite").first()
+    if not tenant_a:
+        tenant_a = Tenant(name="EventPro Elite")
+        tenant_b = Tenant(name="Stellar Events")
+        db.add_all([tenant_a, tenant_b])
+        db.commit()
+        print("Tenants seeded.")
+    else:
+        tenant_b = db.query(Tenant).filter(Tenant.name == "Stellar Events").first()
+
+    # 1.5 Add Users (7 Test Accounts across 2 tenants)
     if db.query(User).count() == 0:
         default_password = get_password_hash("password123")
         users = [
+            # Platform owner — no tenant (sees everything)
             User(email="superadmin@eventpro.com", hashed_password=default_password, role=Role.SUPER_ADMIN.value),
-            User(email="organizer@eventpro.com", hashed_password=default_password, role=Role.ORGANIZER.value),
-            User(email="staff@eventpro.com", hashed_password=default_password, role=Role.STAFF.value),
+            # Tenant A: EventPro Elite
+            User(email="organizer@eventpro.com", hashed_password=default_password, role=Role.ORGANIZER.value, tenant_id=tenant_a.id),
+            User(email="staff@eventpro.com", hashed_password=default_password, role=Role.STAFF.value, tenant_id=tenant_a.id),
+            # Tenant B: Stellar Events (second organizer to prove isolation)
+            User(email="organizer2@eventpro.com", hashed_password=default_password, role=Role.ORGANIZER.value, tenant_id=tenant_b.id),
+            # Cross-tenant consumers / marketplace (no tenant)
             User(email="vendor@eventpro.com", hashed_password=default_password, role=Role.VENDOR.value),
             User(email="sponsor@eventpro.com", hashed_password=default_password, role=Role.SPONSOR.value),
             User(email="attendee@eventpro.com", hashed_password=default_password, role=Role.ATTENDEE.value),
@@ -48,9 +64,12 @@ def seed_data():
         db.add_all(users)
         db.commit()
         print("Test users seeded.")
+    else:
+        users = db.query(User).all()
 
     # Map vendor user
     vendor_user = next((u for u in users if u.role == Role.VENDOR.value), None)
+    organizer2 = next((u for u in users if u.email == "organizer2@eventpro.com"), None)
 
     # 2. Add Vendors
     vendors_data = [
@@ -106,7 +125,7 @@ def seed_data():
             "title": "Summer Music Festival", "description": "Outdoor concert featuring local bands.", "event_type": "Concert",
             "status": "Completed", "client_name": "Rhythm Events", "client_email": "hello@rhythmevents.com",
             "client_phone": "+91 98765 00004", "venue": "Mumbai Open Grounds", "event_date": today - timedelta(days=10),
-            "start_time": "17:00", "end_time": "23:30", "budget": 1200000.0, "attendees_count": 3000, "notes": "Huge success.",
+            "start_time": "17:00", "end_time": "23:30", "budget": 1200000.0, "actual_expenses": 950000.0, "attendees_count": 3000, "notes": "Huge success.",
             "marketing_budget": 400000.0, "expected_roi": 4.5, "expected_attendance": 3200, "actual_attendance": 3050,
             "organizer_id": None
         },
@@ -142,6 +161,30 @@ def seed_data():
             "marketing_budget": 250000.0, "expected_roi": 3.9, "expected_attendance": 1500, "actual_attendance": 1420,
             "organizer_id": organizer_user.id if organizer_user else None
         }
+    ]
+
+    # All base events belong to Tenant A (EventPro Elite)
+    for e in events_data:
+        e["tenant_id"] = tenant_a.id
+
+    # A couple of events for Tenant B (Stellar Events) to demonstrate isolation
+    events_data += [
+        {
+            "title": "Stellar Product Launch", "description": "Flagship product reveal.", "event_type": "Corporate",
+            "status": "Upcoming", "client_name": "Stellar Tech", "client_email": "launch@stellar.io",
+            "client_phone": "+91 98765 09001", "venue": "Chennai Trade Centre", "event_date": today + timedelta(days=12),
+            "start_time": "10:00", "end_time": "14:00", "budget": 600000.0, "attendees_count": 300, "notes": "Press invited.",
+            "marketing_budget": 150000.0, "expected_roi": 3.0, "expected_attendance": 300, "actual_attendance": 0,
+            "organizer_id": organizer2.id if organizer2 else None, "tenant_id": tenant_b.id
+        },
+        {
+            "title": "Stellar Charity Run", "description": "5K fundraising run.", "event_type": "Other",
+            "status": "Upcoming", "client_name": "Stellar Foundation", "client_email": "run@stellar.io",
+            "client_phone": "+91 98765 09002", "venue": "Marina Beach", "event_date": today + timedelta(days=25),
+            "start_time": "06:00", "end_time": "09:00", "budget": 200000.0, "attendees_count": 800, "notes": "Charity event.",
+            "marketing_budget": 40000.0, "expected_roi": 1.5, "expected_attendance": 800, "actual_attendance": 0,
+            "organizer_id": organizer2.id if organizer2 else None, "tenant_id": tenant_b.id
+        },
     ]
 
     db_events = []
@@ -186,6 +229,53 @@ def seed_data():
         db.add_all([msg1, msg2, msg3, msg4])
         db.commit()
         print("Chat messages seeded.")
+
+    # 6. Add Check-ins (live crowd density + sponsor booth engagement)
+    if db.query(CheckIn).count() == 0 and db_events:
+        live_event = next((e for e in db_events if e.status == "In Progress"), db_events[0])
+        checkins = []
+        # ENTRY scans distributed across zones (Gate A intentionally busiest)
+        zone_counts = {"Gate A": 22, "Gate B": 9, "Zone A (Main Hall)": 18, "Zone B (Food Court)": 12}
+        for zone, n in zone_counts.items():
+            for i in range(n):
+                checkins.append(CheckIn(
+                    event_id=live_event.id, scan_type="ENTRY", zone=zone,
+                    attendee_email=f"guest_{zone[0].lower()}{i}@demo.com",
+                ))
+        # BOOTH scans with ~1-in-3 converting to a lead
+        for i in range(42):
+            checkins.append(CheckIn(
+                event_id=live_event.id, scan_type="BOOTH", zone="Booth 4",
+                sponsor_email="sponsor@eventpro.com", lead_captured=(i % 3 == 0),
+            ))
+        db.add_all(checkins)
+        db.commit()
+        print("Check-ins seeded.")
+
+    # 7. Ticket tiers + sample paid orders (commerce / revenue)
+    if db.query(TicketType).count() == 0 and db_events:
+        for e in db_events:
+            if e.status not in ("Upcoming", "In Progress", "Completed"):
+                continue
+            gen = TicketType(event_id=e.id, name="General", description="Standard entry", price=500.0, quantity_total=500)
+            vip = TicketType(event_id=e.id, name="VIP", description="Premium access + lounge", price=2500.0, quantity_total=50)
+            db.add_all([gen, vip])
+            db.flush()
+            # a few paid orders on the General tier
+            for i in range(3):
+                qty = i + 1
+                o = Order(event_id=e.id, ticket_type_id=gen.id, buyer_email=f"buyer{i}@demo.com",
+                          buyer_name=f"Buyer {i}", quantity=qty, unit_price=gen.price,
+                          total_amount=gen.price * qty, status="PAID",
+                          payment_ref="SEED-" + str(e.id) + str(i))
+                gen.quantity_sold += qty
+                db.add(o)
+                db.flush()
+                for _ in range(qty):
+                    db.add(Ticket(code=f"FP-SEED{e.id}{i}{_}".upper()[:20], event_id=e.id,
+                                  attendee_email=o.buyer_email, tier="General", order_id=o.id))
+        db.commit()
+        print("Ticket types + orders seeded.")
 
     print("Data seeding completed successfully!")
 

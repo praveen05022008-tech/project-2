@@ -39,89 +39,119 @@ function renderBudget(activeEvent) {
         <div class="toolbar fade-in stagger-1">
             ${eventSelectorHTML(budgetEvents, activeEvent.id, 'selectBudgetEvent')}
             <button class="btn btn-primary" onclick="fetchBudgetAnalysis(${activeEvent.id})">
-                <i class="material-icons-round">analytics</i> Run AI Analysis
+                <i class="material-icons-round">analytics</i> Recalculate
             </button>
         </div>
 
-        <div class="form-grid fade-in stagger-2">
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="material-icons-round" style="vertical-align: middle;">pie_chart</i> Budget Overview</h3>
-                </div>
-                <div class="card-body">
-                    <div class="stats-grid" style="grid-template-columns: 1fr; margin-bottom: 0;">
-                        <div class="stat-card" style="margin-bottom: 15px;">
-                            <div class="stat-label">Planned Budget</div>
-                            <div class="stat-value">₹${activeEvent.budget.toLocaleString()}</div>
-                        </div>
-                        <div class="stat-card" id="actual-cost-card" style="margin-bottom: 15px;">
-                            <div class="stat-label">Current Actual Costs (Vendor + Misc)</div>
-                            <div class="stat-value">Loading...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="stats-grid fade-in stagger-2" id="budget-kpis">
+            <div class="stat-card"><div class="stat-label">Planned Budget</div><div class="stat-value">₹${(activeEvent.budget||0).toLocaleString()}</div></div>
+            <div class="stat-card"><div class="stat-label">Projected Cost</div><div class="stat-value">…</div></div>
+            <div class="stat-card"><div class="stat-label">Remaining</div><div class="stat-value">…</div></div>
+            <div class="stat-card"><div class="stat-label">Cost / Attendee</div><div class="stat-value">…</div></div>
+        </div>
 
+        <div class="content-grid fade-in stagger-3" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
             <div class="card">
-                <div class="card-header">
-                    <h3><i class="material-icons-round" style="vertical-align: middle;">smart_toy</i> AI Budget Prediction</h3>
-                </div>
-                <div class="card-body" id="ai-budget-feed">
-                    <p class="text-muted">Analyzing costs and running prediction models...</p>
-                </div>
+                <div class="card-header"><h3><i class="material-icons-round" style="vertical-align:middle;">pie_chart</i> Cost Breakdown</h3></div>
+                <div class="card-body" id="budget-breakdown"><p class="text-muted">Calculating…</p></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3><i class="material-icons-round" style="vertical-align:middle;">insights</i> Budget Intelligence</h3></div>
+                <div class="card-body" id="ai-budget-feed"><p class="text-muted">Analyzing costs…</p></div>
             </div>
         </div>
     `;
 }
 
 async function fetchBudgetAnalysis(eventId) {
-    const feedEl = document.getElementById('ai-budget-feed');
-    if (feedEl) feedEl.innerHTML = '<p class="text-muted">Analyzing costs and running prediction models...</p>';
-    
     try {
         const analysis = await api.get(`/budget/analysis/${eventId}`);
         updateBudgetUI(analysis);
     } catch (error) {
         console.error("Failed to fetch budget analysis", error);
-        if (feedEl) feedEl.innerHTML = '<p class="text-danger">Failed to connect to AI Engine.</p>';
+        const feedEl = document.getElementById('ai-budget-feed');
+        if (feedEl) feedEl.innerHTML = `<p class="text-danger">${error.message || 'Failed to run budget analysis.'}</p>`;
     }
 }
 
-function updateBudgetUI(analysis) {
-    const feedEl = document.getElementById('ai-budget-feed');
-    if (feedEl) {
-        const isWarning = analysis.status.toLowerCase().includes('warning');
-        const isOver = analysis.status.toLowerCase().includes('over');
-        let alertClass = '';
-        if (isOver) alertClass = 'critical';
-        else if (isWarning) alertClass = 'warning';
-        
-        // CSS hack for warning since it doesn't exist explicitly in ai-alert-card
-        const bgColor = isWarning ? 'rgba(245, 166, 35, 0.05)' : (isOver ? 'rgba(245, 87, 108, 0.05)' : 'rgba(102, 126, 234, 0.05)');
-        const borderColor = isWarning ? '#f5a623' : (isOver ? '#f5576c' : 'var(--accent-primary)');
+function budgetStatusColor(status) {
+    const s = (status || '').toLowerCase();
+    if (s.includes('over')) return '#f5576c';
+    if (s.includes('warning')) return '#f5a623';
+    if (s.includes('no budget')) return 'var(--text-muted)';
+    return '#43e97b';
+}
 
-        let html = `
-            <div class="ai-alert-card" style="background: ${bgColor}; border-left-color: ${borderColor};">
-                <strong>Status: ${analysis.status}</strong>
-                <p style="margin: 10px 0; font-size: 1.1rem;">Projected Final Cost: <strong>₹${analysis.projected_final_cost.toLocaleString()}</strong></p>
-                <p class="text-muted">${analysis.analysis}</p>
-            </div>
-            
-            <h4 style="margin: 15px 0 10px 0; font-size: 0.9rem;">AI Recommendations:</h4>
-            <ul style="padding-left: 20px; color: var(--text-secondary); font-size: 0.88rem;">
+function inr(n) { return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
+
+function updateBudgetUI(a) {
+    // KPI cards
+    const kpis = document.getElementById('budget-kpis');
+    if (kpis) {
+        const remColor = a.remaining < 0 ? '#f5576c' : '#43e97b';
+        kpis.innerHTML = `
+            <div class="stat-card"><div class="stat-label">Planned Budget</div><div class="stat-value">${inr(a.planned_budget)}</div></div>
+            <div class="stat-card"><div class="stat-label">Projected Cost</div><div class="stat-value" style="color:${budgetStatusColor(a.status)}">${inr(a.projected_final_cost)}</div></div>
+            <div class="stat-card"><div class="stat-label">Remaining</div><div class="stat-value" style="color:${remColor}">${inr(a.remaining)}</div></div>
+            <div class="stat-card"><div class="stat-label">Cost / Attendee</div><div class="stat-value">${inr(a.cost_per_attendee)}</div></div>
         `;
-        
-        analysis.recommendations.forEach(rec => {
-            html += `<li style="margin-bottom: 6px;">${rec}</li>`;
-        });
-        
-        html += `</ul>`;
-        feedEl.innerHTML = html;
     }
 
-    const costCard = document.getElementById('actual-cost-card');
-    if (costCard) {
-        const val = costCard.querySelector('.stat-value');
-        val.textContent = "AI Analysis Complete";
+    // Breakdown bars + utilization gauge
+    const bd = document.getElementById('budget-breakdown');
+    if (bd) {
+        const total = a.breakdown.reduce((s, x) => s + x.amount, 0) || 1;
+        const util = Math.min(a.utilization_pct, 100);
+        const utilColor = budgetStatusColor(a.status);
+        let html = `
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">
+                    <span>Budget utilization</span><span style="color:${utilColor};font-weight:600;">${a.utilization_pct.toFixed(0)}%</span>
+                </div>
+                <div style="height:10px;background:var(--bg-tertiary);border-radius:6px;overflow:hidden;">
+                    <div style="height:100%;width:${util}%;background:${utilColor};transition:width .5s;"></div>
+                </div>
+            </div>`;
+        if (a.breakdown.length) {
+            html += a.breakdown.map(b => {
+                const pct = (b.amount / total * 100).toFixed(0);
+                return `<div style="margin-bottom:10px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px;">
+                        <span style="color:var(--text-primary);">${b.label}</span>
+                        <span style="color:var(--text-secondary);">${inr(b.amount)} · ${pct}%</span>
+                    </div>
+                    <div style="height:6px;background:var(--bg-tertiary);border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:${pct}%;background:var(--accent-gradient);"></div>
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            html += '<p class="text-muted">No costs recorded yet for this event.</p>';
+        }
+        bd.innerHTML = html;
+    }
+
+    // Intelligence feed: status, narrative, risks, recommendations
+    const feed = document.getElementById('ai-budget-feed');
+    if (feed) {
+        const color = budgetStatusColor(a.status);
+        let html = `
+            <div class="ai-alert-card" style="border-left-color:${color};background:${color}14;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="badge" style="background:${color};color:#0b0d12;">${a.status}</span>
+                    ${a.ai_enabled ? '<span class="badge badge-upcoming">AI narrative</span>' : '<span class="badge badge-inactive">rule-based</span>'}
+                </div>
+                <p style="margin:10px 0;color:var(--text-secondary);">${a.analysis}</p>
+                ${a.margin !== null ? `<p style="font-size:0.85rem;color:var(--text-muted);">Expected revenue ${inr(a.expected_revenue)} · margin ${inr(a.margin)}</p>` : ''}
+            </div>`;
+        if (a.risk_flags && a.risk_flags.length) {
+            html += `<h4 style="margin:16px 0 8px;font-size:0.9rem;color:#f5576c;">⚠ Risk flags</h4>
+                <ul style="padding-left:18px;color:var(--text-secondary);font-size:0.85rem;">
+                ${a.risk_flags.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('')}</ul>`;
+        }
+        html += `<h4 style="margin:16px 0 8px;font-size:0.9rem;">Recommendations</h4>
+            <ul style="padding-left:18px;color:var(--text-secondary);font-size:0.85rem;">
+            ${a.recommendations.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('')}</ul>`;
+        feed.innerHTML = html;
     }
 }
