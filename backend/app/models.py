@@ -11,6 +11,15 @@ from app.database import Base
 
 # ─── Enums ──────────────────────────────────────────────────────────────────────
 
+class Role(str, enum.Enum):
+    SUPER_ADMIN = "SUPER_ADMIN"
+    ORGANIZER = "ORGANIZER"
+    STAFF = "STAFF"
+    VENDOR = "VENDOR"
+    SPONSOR = "SPONSOR"
+    ATTENDEE = "ATTENDEE"
+
+
 class EventType(str, enum.Enum):
     WEDDING = "Wedding"
     CORPORATE = "Corporate"
@@ -50,6 +59,24 @@ class AssignmentStatus(str, enum.Enum):
 
 # ─── Models ─────────────────────────────────────────────────────────────────────
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(String(50), default=Role.ATTENDEE.value)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    events = relationship("Event", back_populates="organizer", foreign_keys="[Event.organizer_id]")
+    vendor_profile = relationship("Vendor", back_populates="user", uselist=False, foreign_keys="[Vendor.user_id]")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email='{self.email}', role='{self.role}')>"
+
+
 class Event(Base):
     __tablename__ = "events"
 
@@ -78,6 +105,8 @@ class Event(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
+    organizer_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    organizer = relationship("User", back_populates="events", foreign_keys=[organizer_id])
     vendors = relationship("EventVendor", back_populates="event", cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -102,6 +131,8 @@ class Vendor(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    user = relationship("User", back_populates="vendor_profile", foreign_keys=[user_id])
     events = relationship("EventVendor", back_populates="vendor", cascade="all, delete-orphan")
 
     def __repr__(self):

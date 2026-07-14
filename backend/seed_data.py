@@ -7,8 +7,9 @@ from datetime import date, datetime, timedelta
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal, engine, Base
-from app.models import Event, Vendor, EventVendor, Settings, ChatMessage
-from app.models import EventType, EventStatus, VendorCategory, AssignmentStatus
+from app.models import Event, Vendor, EventVendor, Settings, ChatMessage, User
+from app.models import EventType, EventStatus, VendorCategory, AssignmentStatus, Role
+from app.core.security import get_password_hash
 
 # Create a database session
 db = SessionLocal()
@@ -30,13 +31,31 @@ def seed_data():
         db.add(settings)
         print("Settings seeded.")
 
+    # 1.5 Add Users (6 Test Accounts)
+    if db.query(User).count() == 0:
+        default_password = get_password_hash("password123")
+        users = [
+            User(email="superadmin@eventpro.com", hashed_password=default_password, role=Role.SUPER_ADMIN.value),
+            User(email="organizer@eventpro.com", hashed_password=default_password, role=Role.ORGANIZER.value),
+            User(email="staff@eventpro.com", hashed_password=default_password, role=Role.STAFF.value),
+            User(email="vendor@eventpro.com", hashed_password=default_password, role=Role.VENDOR.value),
+            User(email="sponsor@eventpro.com", hashed_password=default_password, role=Role.SPONSOR.value),
+            User(email="attendee@eventpro.com", hashed_password=default_password, role=Role.ATTENDEE.value),
+        ]
+        db.add_all(users)
+        db.commit()
+        print("Test users seeded.")
+
+    # Map vendor user
+    vendor_user = next((u for u in users if u.role == Role.VENDOR.value), None)
+
     # 2. Add Vendors
     vendors_data = [
-        {"name": "Royal Cuisine Catering", "category": "Catering", "email": "info@royalcuisine.in", "phone": "+91 99999 11111", "address": "Delhi, India", "rating": 4.8, "price_range": "₹1,00,000 - ₹5,00,000", "description": "Premium catering for all events."},
-        {"name": "Crystal Decorators", "category": "Decoration", "email": "decor@crystal.in", "phone": "+91 99999 22222", "address": "Mumbai, India", "rating": 4.5, "price_range": "₹50,000 - ₹2,00,000", "description": "Elegant and modern decorations."},
-        {"name": "Lens & Light Photography", "category": "Photography", "email": "hello@lenslight.com", "phone": "+91 99999 33333", "address": "Bangalore, India", "rating": 4.9, "price_range": "₹80,000 - ₹3,00,000", "description": "Capturing your best moments."},
-        {"name": "Harmony Music Band", "category": "Music", "email": "bookings@harmony.com", "phone": "+91 99999 44444", "address": "Pune, India", "rating": 4.2, "price_range": "₹30,000 - ₹1,00,000", "description": "Live music for weddings and parties."},
-        {"name": "Grand Palace Venue", "category": "Venue", "email": "book@grandpalace.com", "phone": "+91 99999 55555", "address": "Jaipur, India", "rating": 4.7, "price_range": "₹2,00,000 - ₹10,00,000", "description": "Heritage property for grand weddings."}
+        {"name": "Royal Cuisine Catering", "category": "Catering", "email": "info@royalcuisine.in", "phone": "+91 99999 11111", "address": "Delhi, India", "rating": 4.8, "price_range": "₹1,00,000 - ₹5,00,000", "description": "Premium catering for all events.", "user_id": vendor_user.id if vendor_user else None},
+        {"name": "Crystal Decorators", "category": "Decoration", "email": "decor@crystal.in", "phone": "+91 99999 22222", "address": "Mumbai, India", "rating": 4.5, "price_range": "₹50,000 - ₹2,00,000", "description": "Elegant and modern decorations.", "user_id": None},
+        {"name": "Lens & Light Photography", "category": "Photography", "email": "hello@lenslight.com", "phone": "+91 99999 33333", "address": "Bangalore, India", "rating": 4.9, "price_range": "₹80,000 - ₹3,00,000", "description": "Capturing your best moments.", "user_id": None},
+        {"name": "Harmony Music Band", "category": "Music", "email": "bookings@harmony.com", "phone": "+91 99999 44444", "address": "Pune, India", "rating": 4.2, "price_range": "₹30,000 - ₹1,00,000", "description": "Live music for weddings and parties.", "user_id": None},
+        {"name": "Grand Palace Venue", "category": "Venue", "email": "book@grandpalace.com", "phone": "+91 99999 55555", "address": "Jaipur, India", "rating": 4.7, "price_range": "₹2,00,000 - ₹10,00,000", "description": "Heritage property for grand weddings.", "user_id": None}
     ]
 
     db_vendors = []
@@ -50,6 +69,9 @@ def seed_data():
     else:
         db_vendors = db.query(Vendor).all()
 
+    # Map organizer user
+    organizer_user = next((u for u in users if u.role == Role.ORGANIZER.value), None)
+
     # 3. Add Events
     today = date.today()
     events_data = [
@@ -57,31 +79,36 @@ def seed_data():
             "title": "Sharma Wedding", "description": "A grand traditional wedding.", "event_type": "Wedding",
             "status": "Upcoming", "client_name": "Rahul Sharma", "client_email": "rahul.s@example.com",
             "client_phone": "+91 98765 00001", "venue": "Grand Palace Venue", "event_date": today + timedelta(days=15),
-            "start_time": "18:00", "end_time": "23:00", "budget": 1500000.0, "attendees_count": 500, "notes": "VIP guests arriving."
+            "start_time": "18:00", "end_time": "23:00", "budget": 1500000.0, "attendees_count": 500, "notes": "VIP guests arriving.",
+            "organizer_id": organizer_user.id if organizer_user else None
         },
         {
             "title": "Tech Innovators Summit 2026", "description": "Annual tech conference for developers.", "event_type": "Conference",
             "status": "In Progress", "client_name": "Tech Corp India", "client_email": "events@techcorp.in",
             "client_phone": "+91 98765 00002", "venue": "Bangalore Exhibition Center", "event_date": today,
-            "start_time": "09:00", "end_time": "18:00", "budget": 800000.0, "attendees_count": 1200, "notes": "Requires high speed internet."
+            "start_time": "09:00", "end_time": "18:00", "budget": 800000.0, "attendees_count": 1200, "notes": "Requires high speed internet.",
+            "organizer_id": organizer_user.id if organizer_user else None
         },
         {
             "title": "Aarav's 10th Birthday", "description": "Superhero themed birthday party.", "event_type": "Birthday",
             "status": "Upcoming", "client_name": "Priya Patel", "client_email": "priya.p@example.com",
             "client_phone": "+91 98765 00003", "venue": "FunZone Kids Arena", "event_date": today + timedelta(days=5),
-            "start_time": "16:00", "end_time": "19:00", "budget": 50000.0, "attendees_count": 50, "notes": "Spiderman cake requested."
+            "start_time": "16:00", "end_time": "19:00", "budget": 50000.0, "attendees_count": 50, "notes": "Spiderman cake requested.",
+            "organizer_id": None
         },
         {
             "title": "Summer Music Festival", "description": "Outdoor concert featuring local bands.", "event_type": "Concert",
             "status": "Completed", "client_name": "Rhythm Events", "client_email": "hello@rhythmevents.com",
             "client_phone": "+91 98765 00004", "venue": "Mumbai Open Grounds", "event_date": today - timedelta(days=10),
-            "start_time": "17:00", "end_time": "23:30", "budget": 1200000.0, "attendees_count": 3000, "notes": "Huge success."
+            "start_time": "17:00", "end_time": "23:30", "budget": 1200000.0, "attendees_count": 3000, "notes": "Huge success.",
+            "organizer_id": None
         },
         {
             "title": "Corporate Annual Gala", "description": "End of year celebration.", "event_type": "Corporate",
             "status": "Cancelled", "client_name": "Global Solutions Ltd", "client_email": "hr@globalsolutions.com",
             "client_phone": "+91 98765 00005", "venue": "Taj Hotel", "event_date": today + timedelta(days=20),
-            "start_time": "19:00", "end_time": "23:00", "budget": 500000.0, "attendees_count": 200, "notes": "Cancelled due to scheduling conflict."
+            "start_time": "19:00", "end_time": "23:00", "budget": 500000.0, "attendees_count": 200, "notes": "Cancelled due to scheduling conflict.",
+            "organizer_id": None
         }
     ]
 

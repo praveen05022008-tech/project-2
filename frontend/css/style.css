@@ -1674,3 +1674,58 @@ input, textarea, select { font-family: inherit; }
     font-size: 0.85rem;
     color: var(--text-muted);
 }
+
+/* ─── Role Feature Expansions & Enhanced Animations ────────────────────── */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+
+/* Enhanced Pulse for Live Alerts */
+@keyframes pulseCritical {
+    0% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(245, 87, 108, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0); }
+}
+
+.pulse-alert {
+    animation: pulseCritical 2s infinite;
+    border: 1px solid rgba(245, 87, 108, 0.5);
+    background: rgba(245, 87, 108, 0.1);
+}
+
+/* Enhanced Glass Glow */
+.card-glow {
+    position: relative;
+}
+.card-glow::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background: var(--accent-gradient);
+    filter: blur(8px);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.3s ease;
+    border-radius: inherit;
+}
+.card-glow:hover::after {
+    opacity: 0.5;
+}
