@@ -12,10 +12,12 @@ name: Build Android APK
 # Run: Actions tab → "Build Android APK" → Run workflow  (or push a tag like v1.0.0)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:        # manual run from the Actions tab
   push:
+    branches:
+      - main                # rebuild the APK on every push to main
     tags:
-      - 'v*'
+      - 'v*'                # ...and on version tags (v1.0.0)
 
 permissions:
   contents: write

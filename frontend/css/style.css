@@ -1805,6 +1805,50 @@ input, textarea, select { font-family: inherit; }
 
 .login-footer strong { color: var(--text-secondary); }
 
+/* Feature highlight chips on the login card */
+.login-features {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+.login-features span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    border-radius: 20px;
+}
+.login-features .material-icons-round { font-size: 14px; color: var(--accent-primary); }
+
+/* Sign In / Create Account tabs */
+.auth-tabs {
+    display: flex;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 20px;
+}
+.auth-tab {
+    flex: 1;
+    padding: 9px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: var(--transition-fast);
+}
+.auth-tab.active {
+    background: var(--accent-gradient);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
 /* Password field with visibility toggle */
 .password-field { position: relative; display: flex; align-items: center; }
 .password-field .form-input { padding-right: 44px; width: 100%; }
