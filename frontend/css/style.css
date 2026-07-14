@@ -1481,71 +1481,178 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ─── Responsive ────────────────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-    .content-grid {
+/* ─── Super Admin layout helpers ────────────────────────────────────────── */
+.admin-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.health-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.health-row strong { color: var(--text-primary); font-weight: 600; }
+
+/* ─── Event picker (Budget / Analytics / Reports / Command Center) ──────── */
+.event-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 4px 12px;
+}
+.event-picker .material-icons-round {
+    font-size: 18px;
+    color: var(--accent-primary);
+}
+.event-select {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 8px 4px;
+    outline: none;
+    cursor: pointer;
+    max-width: 320px;
+}
+.event-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* ─── Mobile sidebar backdrop ───────────────────────────────────────────── */
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 8, 15, 0.6);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-base), visibility var(--transition-base);
+    z-index: 90;
+}
+.sidebar-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ═══ Responsive breakpoints ════════════════════════════════════════════ */
+
+/* Large laptops / small desktops */
+@media (max-width: 1280px) {
+    .admin-grid { grid-template-columns: 1.4fr 1fr; }
+}
+
+/* Tablets landscape & small laptops */
+@media (max-width: 1100px) {
+    .content-grid,
+    .admin-grid {
         grid-template-columns: 1fr;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
 }
 
+/* Tablets portrait */
+@media (max-width: 900px) {
+    html { font-size: 13.5px; }
+    .page-container { padding: 24px 22px; }
+    .topbar { padding: 0 22px; }
+}
+
+/* Phones & small tablets — sidebar becomes an off-canvas drawer */
 @media (max-width: 768px) {
     .sidebar {
         transform: translateX(-100%);
+        box-shadow: var(--shadow-lg);
     }
-
     .sidebar.open {
         transform: translateX(0);
     }
-
     .main-content {
         margin-left: 0;
+        width: 100%;
     }
-
     .menu-toggle {
         display: flex;
     }
-
     .page-container {
-        padding: 20px 16px;
+        padding: 18px 16px;
     }
-
     .topbar {
-        padding: 0 16px;
+        padding: 0 14px;
     }
-
+    .topbar-date {
+        display: none;
+    }
     .stats-grid {
         grid-template-columns: 1fr 1fr;
+        gap: 14px;
     }
-
     .form-grid {
         grid-template-columns: 1fr;
     }
-
     .chat-message {
         max-width: 90%;
     }
-
     .toolbar {
         flex-direction: column;
         align-items: stretch;
     }
-
     .search-box {
         max-width: none;
     }
-
     .vendor-grid {
         grid-template-columns: 1fr;
     }
+    .demo-role-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .login-card {
+        padding: 28px 22px;
+    }
+    /* Comfortable touch targets */
+    .nav-link { padding: 14px 16px; }
+    .btn { min-height: 42px; }
 }
 
+/* Small phones */
 @media (max-width: 480px) {
+    html { font-size: 13px; }
     .stats-grid {
         grid-template-columns: 1fr;
     }
-
     .topbar-title h2 {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
     }
+    .page-container {
+        padding: 16px 12px;
+    }
+    .card-body { padding: 16px; }
+    .stat-value { font-size: 1.7rem; }
+    .demo-role { font-size: 0.68rem; padding: 10px 4px; }
+    .demo-role .material-icons-round { font-size: 20px; }
+    .modal {
+        width: 94vw;
+        max-height: 88vh;
+    }
+    /* Let wide data tables scroll horizontally instead of squishing */
+    .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .data-table { min-width: 560px; }
 }
 
 /* ─── Animation Utilities ───────────────────────────────────────────────── */
@@ -1669,10 +1776,79 @@ input, textarea, select { font-family: inherit; }
 }
 
 .login-footer {
-    margin-top: 24px;
+    margin-top: 20px;
     text-align: center;
     font-size: 0.85rem;
     color: var(--text-muted);
+}
+
+.login-footer strong { color: var(--text-secondary); }
+
+/* Password field with visibility toggle */
+.password-field { position: relative; display: flex; align-items: center; }
+.password-field .form-input { padding-right: 44px; width: 100%; }
+.password-toggle {
+    position: absolute;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    padding: 6px;
+    border-radius: 8px;
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+.password-toggle:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.password-toggle .material-icons-round { font-size: 20px; }
+
+/* Demo role quick-login */
+.login-demo { margin-top: 24px; }
+.login-demo-title {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 14px;
+}
+.login-demo-title::before,
+.login-demo-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+.login-demo-title span { padding: 0 12px; }
+
+.demo-role-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+.demo-role {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all var(--transition-fast);
+}
+.demo-role .material-icons-round { font-size: 22px; color: var(--accent-primary); }
+.demo-role:hover {
+    border-color: var(--border-glow);
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
 }
 
 /* ─── Role Feature Expansions & Enhanced Animations ────────────────────── */

@@ -16,7 +16,10 @@ db = SessionLocal()
 
 def seed_data():
     print("Seeding database...")
-    
+
+    # Ensure all tables exist before we try to query/insert.
+    Base.metadata.create_all(bind=engine)
+
     # 1. Add Settings
     if not db.query(Settings).first():
         settings = Settings(
@@ -80,6 +83,7 @@ def seed_data():
             "status": "Upcoming", "client_name": "Rahul Sharma", "client_email": "rahul.s@example.com",
             "client_phone": "+91 98765 00001", "venue": "Grand Palace Venue", "event_date": today + timedelta(days=15),
             "start_time": "18:00", "end_time": "23:00", "budget": 1500000.0, "attendees_count": 500, "notes": "VIP guests arriving.",
+            "marketing_budget": 200000.0, "expected_roi": 2.6, "expected_attendance": 550, "actual_attendance": 0,
             "organizer_id": organizer_user.id if organizer_user else None
         },
         {
@@ -87,6 +91,7 @@ def seed_data():
             "status": "In Progress", "client_name": "Tech Corp India", "client_email": "events@techcorp.in",
             "client_phone": "+91 98765 00002", "venue": "Bangalore Exhibition Center", "event_date": today,
             "start_time": "09:00", "end_time": "18:00", "budget": 800000.0, "attendees_count": 1200, "notes": "Requires high speed internet.",
+            "marketing_budget": 300000.0, "expected_roi": 3.8, "expected_attendance": 1300, "actual_attendance": 1150,
             "organizer_id": organizer_user.id if organizer_user else None
         },
         {
@@ -94,6 +99,7 @@ def seed_data():
             "status": "Upcoming", "client_name": "Priya Patel", "client_email": "priya.p@example.com",
             "client_phone": "+91 98765 00003", "venue": "FunZone Kids Arena", "event_date": today + timedelta(days=5),
             "start_time": "16:00", "end_time": "19:00", "budget": 50000.0, "attendees_count": 50, "notes": "Spiderman cake requested.",
+            "marketing_budget": 8000.0, "expected_roi": 1.3, "expected_attendance": 55, "actual_attendance": 0,
             "organizer_id": None
         },
         {
@@ -101,6 +107,7 @@ def seed_data():
             "status": "Completed", "client_name": "Rhythm Events", "client_email": "hello@rhythmevents.com",
             "client_phone": "+91 98765 00004", "venue": "Mumbai Open Grounds", "event_date": today - timedelta(days=10),
             "start_time": "17:00", "end_time": "23:30", "budget": 1200000.0, "attendees_count": 3000, "notes": "Huge success.",
+            "marketing_budget": 400000.0, "expected_roi": 4.5, "expected_attendance": 3200, "actual_attendance": 3050,
             "organizer_id": None
         },
         {
@@ -108,7 +115,32 @@ def seed_data():
             "status": "Cancelled", "client_name": "Global Solutions Ltd", "client_email": "hr@globalsolutions.com",
             "client_phone": "+91 98765 00005", "venue": "Taj Hotel", "event_date": today + timedelta(days=20),
             "start_time": "19:00", "end_time": "23:00", "budget": 500000.0, "attendees_count": 200, "notes": "Cancelled due to scheduling conflict.",
+            "marketing_budget": 120000.0, "expected_roi": 2.1, "expected_attendance": 220, "actual_attendance": 0,
             "organizer_id": None
+        },
+        {
+            "title": "Global Fintech Expo 2026", "description": "Largest fintech exhibition in South Asia.", "event_type": "Exhibition",
+            "status": "Upcoming", "client_name": "FinConnect India", "client_email": "expo@finconnect.in",
+            "client_phone": "+91 98765 00010", "venue": "Hyderabad Convention Centre", "event_date": today + timedelta(days=40),
+            "start_time": "10:00", "end_time": "18:00", "budget": 2000000.0, "attendees_count": 5000, "notes": "500+ exhibitor booths.",
+            "marketing_budget": 500000.0, "expected_roi": 4.2, "expected_attendance": 5000, "actual_attendance": 0,
+            "organizer_id": organizer_user.id if organizer_user else None
+        },
+        {
+            "title": "Startup Pitch Night", "description": "Investor pitch evening for early-stage startups.", "event_type": "Seminar",
+            "status": "Upcoming", "client_name": "Nexus Ventures", "client_email": "events@nexusvc.com",
+            "client_phone": "+91 98765 00011", "venue": "WeWork Koramangala", "event_date": today + timedelta(days=8),
+            "start_time": "17:30", "end_time": "21:00", "budget": 300000.0, "attendees_count": 400, "notes": "20 startups pitching.",
+            "marketing_budget": 90000.0, "expected_roi": 3.1, "expected_attendance": 400, "actual_attendance": 0,
+            "organizer_id": organizer_user.id if organizer_user else None
+        },
+        {
+            "title": "Diwali Cultural Gala", "description": "Company-wide festival celebration.", "event_type": "Corporate",
+            "status": "Completed", "client_name": "Aurora Systems", "client_email": "hr@aurorasys.com",
+            "client_phone": "+91 98765 00012", "venue": "ITC Grand Chola", "event_date": today - timedelta(days=20),
+            "start_time": "19:00", "end_time": "23:30", "budget": 900000.0, "actual_expenses": 850000.0, "attendees_count": 1500, "notes": "Live music + dinner.",
+            "marketing_budget": 250000.0, "expected_roi": 3.9, "expected_attendance": 1500, "actual_attendance": 1420,
+            "organizer_id": organizer_user.id if organizer_user else None
         }
     ]
 

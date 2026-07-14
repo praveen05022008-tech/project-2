@@ -5,6 +5,7 @@ from typing import Optional, List
 from datetime import date
 
 from app.database import get_db
+from app.core.deps import require_roles
 from app.models import Event, EventVendor, Vendor
 from app.schemas import (
     EventCreate, EventUpdate, EventResponse,
@@ -12,6 +13,9 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/api/events", tags=["Events"])
+
+# Roles allowed to create/modify events and vendor assignments.
+manage_events = require_roles("SUPER_ADMIN", "ORGANIZER", "STAFF")
 
 
 # ─── Event CRUD ─────────────────────────────────────────────────────────────────
@@ -60,7 +64,7 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
     return EventResponse.model_validate(event)
 
 
-@router.post("", response_model=EventResponse, status_code=201)
+@router.post("", response_model=EventResponse, status_code=201, dependencies=[Depends(manage_events)])
 def create_event(event_data: EventCreate, db: Session = Depends(get_db)):
     """Create a new event."""
     event = Event(**event_data.model_dump())
@@ -70,7 +74,7 @@ def create_event(event_data: EventCreate, db: Session = Depends(get_db)):
     return EventResponse.model_validate(event)
 
 
-@router.put("/{event_id}", response_model=EventResponse)
+@router.put("/{event_id}", response_model=EventResponse, dependencies=[Depends(manage_events)])
 def update_event(event_id: int, event_data: EventUpdate, db: Session = Depends(get_db)):
     """Update an existing event."""
     event = db.query(Event).filter(Event.id == event_id).first()
@@ -86,7 +90,7 @@ def update_event(event_id: int, event_data: EventUpdate, db: Session = Depends(g
     return EventResponse.model_validate(event)
 
 
-@router.delete("/{event_id}")
+@router.delete("/{event_id}", dependencies=[Depends(manage_events)])
 def delete_event(event_id: int, db: Session = Depends(get_db)):
     """Delete an event."""
     event = db.query(Event).filter(Event.id == event_id).first()
@@ -129,7 +133,7 @@ def get_event_vendors(event_id: int, db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/{event_id}/vendors", response_model=EventVendorResponse, status_code=201)
+@router.post("/{event_id}/vendors", response_model=EventVendorResponse, status_code=201, dependencies=[Depends(manage_events)])
 def assign_vendor_to_event(
     event_id: int,
     data: EventVendorCreate,
@@ -176,7 +180,7 @@ def assign_vendor_to_event(
     )
 
 
-@router.delete("/{event_id}/vendors/{assignment_id}")
+@router.delete("/{event_id}/vendors/{assignment_id}", dependencies=[Depends(manage_events)])
 def remove_vendor_from_event(
     event_id: int,
     assignment_id: int,

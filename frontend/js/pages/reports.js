@@ -1,5 +1,7 @@
 registerPage('reports', initReports);
 
+let reportsEvents = [];
+
 async function initReports() {
     const container = document.getElementById('page-container');
     container.innerHTML = `
@@ -7,9 +9,9 @@ async function initReports() {
     `;
 
     try {
-        const events = await api.get('/events');
+        reportsEvents = await api.get('/events');
         // Only show reports for completed events, or all if none completed for demo
-        const activeEvent = events.length > 0 ? events[0] : null;
+        const activeEvent = reportsEvents.length > 0 ? reportsEvents[0] : null;
 
         if (!activeEvent) {
             container.innerHTML = `<div class="card"><div class="card-body">No events available for reporting.</div></div>`;
@@ -17,18 +19,24 @@ async function initReports() {
         }
 
         renderReports(activeEvent);
-        
+
     } catch (err) {
         console.error(err);
         container.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load Reports data.</div></div>`;
     }
 }
 
+function selectReportsEvent(id) {
+    const ev = reportsEvents.find(e => String(e.id) === String(id));
+    if (!ev) return;
+    renderReports(ev);
+}
+
 function renderReports(activeEvent) {
     const container = document.getElementById('page-container');
     container.innerHTML = `
         <div class="toolbar fade-in stagger-1">
-            <p>Post-Event Report for: <strong>${activeEvent.title}</strong></p>
+            ${eventSelectorHTML(reportsEvents, activeEvent.id, 'selectReportsEvent')}
             <button class="btn btn-primary" onclick="generateReport(${activeEvent.id})">
                 <i class="material-icons-round">description</i> Generate AI Report
             </button>

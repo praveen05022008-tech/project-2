@@ -1,6 +1,7 @@
 registerPage('command-center', initCommandCenter);
 
 let ccPollInterval = null;
+let ccEvents = [];
 
 async function initCommandCenter() {
     const container = document.getElementById('page-container');
@@ -9,25 +10,35 @@ async function initCommandCenter() {
     `;
 
     try {
-        const events = await api.get('/events');
-        const activeEvent = events.length > 0 ? events[0] : null;
+        ccEvents = await api.get('/events');
+        const activeEvent = ccEvents.length > 0 ? ccEvents[0] : null;
 
         if (!activeEvent) {
             container.innerHTML = `<div class="card"><div class="card-body">No active events found.</div></div>`;
             return;
         }
 
-        renderCommandCenter(activeEvent);
-        
-        // Start polling simulation
-        fetchLiveData(activeEvent.id);
-        if (ccPollInterval) clearInterval(ccPollInterval);
-        ccPollInterval = setInterval(() => fetchLiveData(activeEvent.id), 10000);
-        
+        startCommandCenter(activeEvent);
+
     } catch (err) {
         console.error(err);
         container.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load Command Center data.</div></div>`;
     }
+}
+
+function startCommandCenter(activeEvent) {
+    renderCommandCenter(activeEvent);
+
+    // Start polling simulation for the selected event
+    fetchLiveData(activeEvent.id);
+    if (ccPollInterval) clearInterval(ccPollInterval);
+    ccPollInterval = setInterval(() => fetchLiveData(activeEvent.id), 10000);
+}
+
+function selectCcEvent(id) {
+    const ev = ccEvents.find(e => String(e.id) === String(id));
+    if (!ev) return;
+    startCommandCenter(ev);
 }
 
 // Cleanup interval if user navigates away
@@ -41,7 +52,7 @@ function renderCommandCenter(activeEvent) {
     const container = document.getElementById('page-container');
     container.innerHTML = `
         <div class="toolbar fade-in stagger-1">
-            <p>Monitoring Event: <strong>${activeEvent.title}</strong></p>
+            ${eventSelectorHTML(ccEvents, activeEvent.id, 'selectCcEvent')}
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-primary" onclick="fetchLiveData(${activeEvent.id})">
                     <i class="material-icons-round">refresh</i> Force Refresh

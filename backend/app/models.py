@@ -180,6 +180,26 @@ class Settings(Base):
         return f"<Settings(company_name='{self.company_name}')>"
 
 
+class AuditLog(Base):
+    """Records every state-changing action taken by any user, for the
+    Super Admin audit trail."""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    user_email = Column(String(255), nullable=True, index=True)
+    user_role = Column(String(50), nullable=True, index=True)
+    action = Column(String(255), nullable=False)          # human-readable summary
+    method = Column(String(10), nullable=True)            # HTTP method
+    path = Column(String(500), nullable=True)             # request path
+    status_code = Column(Integer, nullable=True)          # response status
+    ip_address = Column(String(64), nullable=True)
+    details = Column(Text, nullable=True)                 # optional extra context
+
+    def __repr__(self):
+        return f"<AuditLog(user='{self.user_email}', action='{self.action}')>"
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 

@@ -1,5 +1,7 @@
 registerPage('budget', initBudget);
 
+let budgetEvents = [];
+
 async function initBudget() {
     const container = document.getElementById('page-container');
     container.innerHTML = `
@@ -7,8 +9,8 @@ async function initBudget() {
     `;
 
     try {
-        const events = await api.get('/events');
-        const activeEvent = events.length > 0 ? events[0] : null;
+        budgetEvents = await api.get('/events');
+        const activeEvent = budgetEvents.length > 0 ? budgetEvents[0] : null;
 
         if (!activeEvent) {
             container.innerHTML = `<div class="card"><div class="card-body">No active events found.</div></div>`;
@@ -17,18 +19,25 @@ async function initBudget() {
 
         renderBudget(activeEvent);
         fetchBudgetAnalysis(activeEvent.id);
-        
+
     } catch (err) {
         console.error(err);
         container.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load Budget AI data.</div></div>`;
     }
 }
 
+function selectBudgetEvent(id) {
+    const ev = budgetEvents.find(e => String(e.id) === String(id));
+    if (!ev) return;
+    renderBudget(ev);
+    fetchBudgetAnalysis(ev.id);
+}
+
 function renderBudget(activeEvent) {
     const container = document.getElementById('page-container');
     container.innerHTML = `
         <div class="toolbar fade-in stagger-1">
-            <p>Analyzing Event: <strong>${activeEvent.title}</strong></p>
+            ${eventSelectorHTML(budgetEvents, activeEvent.id, 'selectBudgetEvent')}
             <button class="btn btn-primary" onclick="fetchBudgetAnalysis(${activeEvent.id})">
                 <i class="material-icons-round">analytics</i> Run AI Analysis
             </button>

@@ -77,7 +77,7 @@ def update_live_data(event_id: int, update: LiveStateUpdate, db: Session = Depen
 
 @router.get("/predict/{event_id}")
 def get_ai_prediction(event_id: int, db: Session = Depends(get_db)):
-    """Analyze live simulation data using Gemini AI and return recommendations."""
+    """Analyze live simulation data using the Cerebras AI engine and return recommendations."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -127,13 +127,15 @@ def get_ai_prediction(event_id: int, db: Session = Depends(get_db)):
         
         return json.loads(text.strip())
     except Exception as e:
+        # Log detail server-side; keep the client-facing message generic.
+        print(f"[AI ERROR] Operations prediction failed: {e}")
         return {
             "overall_health": "Error",
             "issues": [
                 {
-                    "description": f"AI Engine Error: {str(e)}",
+                    "description": "The AI engine could not process live data right now.",
                     "severity": "Medium",
-                    "recommendation": "Check API logs"
+                    "recommendation": "Please retry shortly or check the server logs."
                 }
             ],
             "resource_optimization": "Processing failed."

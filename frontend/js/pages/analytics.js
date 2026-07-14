@@ -1,5 +1,7 @@
 registerPage('analytics', initAnalytics);
 
+let analyticsEvents = [];
+
 async function initAnalytics() {
     const container = document.getElementById('page-container');
     container.innerHTML = `
@@ -7,8 +9,8 @@ async function initAnalytics() {
     `;
 
     try {
-        const events = await api.get('/events');
-        const activeEvent = events.length > 0 ? events[0] : null;
+        analyticsEvents = await api.get('/events');
+        const activeEvent = analyticsEvents.length > 0 ? analyticsEvents[0] : null;
 
         if (!activeEvent) {
             container.innerHTML = `<div class="card"><div class="card-body">No active events found.</div></div>`;
@@ -17,18 +19,25 @@ async function initAnalytics() {
 
         renderAnalytics(activeEvent);
         fetchAnalytics(activeEvent.id);
-        
+
     } catch (err) {
         console.error(err);
         container.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load Analytics data.</div></div>`;
     }
 }
 
+function selectAnalyticsEvent(id) {
+    const ev = analyticsEvents.find(e => String(e.id) === String(id));
+    if (!ev) return;
+    renderAnalytics(ev);
+    fetchAnalytics(ev.id);
+}
+
 function renderAnalytics(activeEvent) {
     const container = document.getElementById('page-container');
     container.innerHTML = `
         <div class="toolbar fade-in stagger-1">
-            <p>Predicting Attendance & Marketing for: <strong>${activeEvent.title}</strong></p>
+            ${eventSelectorHTML(analyticsEvents, activeEvent.id, 'selectAnalyticsEvent')}
             <button class="btn btn-primary" onclick="fetchAnalytics(${activeEvent.id})">
                 <i class="material-icons-round">insights</i> Refresh Prediction
             </button>
