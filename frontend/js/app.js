@@ -2,21 +2,32 @@
    EventPro — Main Application (Router, API Service, Utilities)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Resolve the API base URL.
-// 1. If a global override is set (window.API_BASE_OVERRIDE), use it.
-// 2. If the page is served over http/https, call the SAME origin (the backend
-//    serves this frontend), so it works on any host/port without edits.
-// 3. If opened directly from the filesystem (file://), fall back to localhost.
-const PRODUCTION_API_URL = 'https://event-management-zef1.onrender.com/api';
+// ─── API base URL resolution ─────────────────────────────────────────────────
+// Deployment: the backend runs as a SEPARATE Render service from the frontend,
+// so the frontend must call the backend's URL. Update BACKEND_URL if your
+// backend service URL changes.
+//   • Local dev (localhost) → talks to your local backend on :8000
+//   • Deployed (any other host) → talks to BACKEND_URL
+// Runtime override (no redeploy needed):
+//   localStorage.setItem('api_base', 'https://your-backend.onrender.com/api')
+const BACKEND_URL = 'https://event-management-zef1.onrender.com';
 
 let API_BASE;
-if (window.API_BASE_OVERRIDE) {
-    API_BASE = window.API_BASE_OVERRIDE;
-} else if (window.location.protocol === 'file:') {
-    API_BASE = 'http://localhost:8000/api';
+const _override = window.API_BASE_OVERRIDE || localStorage.getItem('api_base');
+const _host = window.location.hostname;
+const _isLocal = _host === 'localhost' || _host === '127.0.0.1';
+
+if (_override) {
+    API_BASE = _override.replace(/\/+$/, '');
+} else if (_isLocal) {
+    API_BASE = `${window.location.origin}/api`;   // local dev: backend serves the frontend
+} else if (BACKEND_URL) {
+    API_BASE = BACKEND_URL.replace(/\/+$/, '') + '/api';  // deployed: separate backend
 } else {
     API_BASE = `${window.location.origin}/api`;
 }
+console.log('[EventPro] API base:', API_BASE);
+
 // ─── API Service ───────────────────────────────────────────────────────────────
 
 const api = {
@@ -32,12 +43,44 @@ const api = {
         if (data && (method === 'POST' || method === 'PUT')) {
             options.body = JSON.stringify(data);
         }
-        const response = await fetch(`${API_BASE}${endpoint}`, options);
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.detail || `Request failed: ${response.status}`);
+
+        let response;
+        try {
+            response = await fetch(`${API_BASE}${endpoint}`, options);
+        } catch (netErr) {
+            // Network / CORS failure — the request never got a valid response.
+            throw new Error(
+                `Cannot reach the API at ${API_BASE}. Check that the backend is ` +
+                `running and that CORS/ALLOWED_ORIGINS allows this site. (${netErr.message})`
+            );
         }
-        return response.json();
+
+        // Read the body as text first so empty / non-JSON responses don't crash.
+        const raw = await response.text();
+        let body = null;
+        if (raw) {
+            try { body = JSON.parse(raw); } catch (_) { /* not JSON */ }
+        }
+
+        if (!response.ok) {
+            let detail = body && body.detail ? body.detail : null;
+            if (!detail) {
+                detail = raw
+                    ? `Server error ${response.status}: ${raw.slice(0, 160)}`
+                    : `Request failed (HTTP ${response.status}) with an empty response.`;
+            }
+            throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+        }
+
+        if (raw && body === null) {
+            // 2xx but the body wasn't JSON — usually means the request hit the
+            // wrong host (e.g. a static site) instead of the API.
+            throw new Error(
+                `The API at ${API_BASE}${endpoint} returned a non-JSON response. ` +
+                `The frontend is likely pointing at the wrong backend URL.`
+            );
+        }
+        return body;
     },
 
     get(endpoint) { return this.request('GET', endpoint); },
