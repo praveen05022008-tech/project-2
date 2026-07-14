@@ -55,7 +55,9 @@ def get_ai_response(message: str, chat_history: list) -> str:
             )
             return response.choices[0].message.content
         except Exception as e:
-            return f"I apologize, but I'm experiencing a temporary issue. Please try again in a moment. (Error: {str(e)})"
+            # Log the real error server-side; return a generic message to the client.
+            print(f"[AI ERROR] Cerebras chat failed: {e}")
+            return "I apologize, but I'm experiencing a temporary issue. Please try again in a moment."
     else:
         # Intelligent fallback responses when no API key
         return get_fallback_response(message)

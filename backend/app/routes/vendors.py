@@ -4,10 +4,14 @@ from sqlalchemy import or_
 from typing import Optional, List
 
 from app.database import get_db
+from app.core.deps import require_roles
 from app.models import Vendor
 from app.schemas import VendorCreate, VendorUpdate, VendorResponse
 
 router = APIRouter(prefix="/api/vendors", tags=["Vendors"])
+
+# Only administrators and organizers can manage the vendor directory.
+manage_vendors = require_roles("SUPER_ADMIN", "ORGANIZER")
 
 
 @router.get("", response_model=List[VendorResponse])
@@ -48,7 +52,7 @@ def get_vendor(vendor_id: int, db: Session = Depends(get_db)):
     return VendorResponse.model_validate(vendor)
 
 
-@router.post("", response_model=VendorResponse, status_code=201)
+@router.post("", response_model=VendorResponse, status_code=201, dependencies=[Depends(manage_vendors)])
 def create_vendor(vendor_data: VendorCreate, db: Session = Depends(get_db)):
     """Create a new vendor."""
     vendor = Vendor(**vendor_data.model_dump())
@@ -58,7 +62,7 @@ def create_vendor(vendor_data: VendorCreate, db: Session = Depends(get_db)):
     return VendorResponse.model_validate(vendor)
 
 
-@router.put("/{vendor_id}", response_model=VendorResponse)
+@router.put("/{vendor_id}", response_model=VendorResponse, dependencies=[Depends(manage_vendors)])
 def update_vendor(vendor_id: int, vendor_data: VendorUpdate, db: Session = Depends(get_db)):
     """Update an existing vendor."""
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id).first()
@@ -74,7 +78,7 @@ def update_vendor(vendor_id: int, vendor_data: VendorUpdate, db: Session = Depen
     return VendorResponse.model_validate(vendor)
 
 
-@router.delete("/{vendor_id}")
+@router.delete("/{vendor_id}", dependencies=[Depends(manage_vendors)])
 def delete_vendor(vendor_id: int, db: Session = Depends(get_db)):
     """Delete a vendor."""
     vendor = db.query(Vendor).filter(Vendor.id == vendor_id).first()

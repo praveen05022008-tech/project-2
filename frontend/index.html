@@ -24,19 +24,53 @@
             </div>
             <form id="login-form">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" class="form-input" placeholder="Enter your ID (e.g., admin)" required>
+                    <label for="username">Email</label>
+                    <input type="email" id="username" class="form-input" autocomplete="username"
+                           placeholder="you@eventpro.com" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                    <div class="password-field">
+                        <input type="password" id="password" class="form-input" autocomplete="current-password"
+                               placeholder="Enter your password" required>
+                        <button type="button" class="password-toggle" id="password-toggle" title="Show password" aria-label="Show password">
+                            <span class="material-icons-round">visibility</span>
+                        </button>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 10px;">
+                <button type="submit" class="btn btn-primary" id="login-submit" style="width: 100%; justify-content: center; margin-top: 10px;">
                     Sign In
                 </button>
             </form>
+
+            <div class="login-demo">
+                <div class="login-demo-title">
+                    <span>Quick demo login</span>
+                </div>
+                <div class="demo-role-grid">
+                    <button class="demo-role" data-email="superadmin@eventpro.com">
+                        <span class="material-icons-round">admin_panel_settings</span> Super Admin
+                    </button>
+                    <button class="demo-role" data-email="organizer@eventpro.com">
+                        <span class="material-icons-round">event_available</span> Organizer
+                    </button>
+                    <button class="demo-role" data-email="staff@eventpro.com">
+                        <span class="material-icons-round">badge</span> Staff
+                    </button>
+                    <button class="demo-role" data-email="vendor@eventpro.com">
+                        <span class="material-icons-round">store</span> Vendor
+                    </button>
+                    <button class="demo-role" data-email="sponsor@eventpro.com">
+                        <span class="material-icons-round">campaign</span> Sponsor
+                    </button>
+                    <button class="demo-role" data-email="attendee@eventpro.com">
+                        <span class="material-icons-round">person</span> Attendee
+                    </button>
+                </div>
+            </div>
+
             <div class="login-footer">
-                <p>Default ID: <strong>admin</strong> | Password: <strong>admin123</strong></p>
+                <p>Demo password for all roles: <strong>password123</strong></p>
             </div>
         </div>
     </div>
@@ -107,6 +141,12 @@
                         </a>
                     </li>
                     <li>
+                        <a href="#audit-logs" class="nav-link" data-page="audit-logs" id="nav-audit-logs">
+                            <span class="material-icons-round">fact_check</span>
+                            <span class="nav-text">Audit Logs</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="#settings" class="nav-link" data-page="settings" id="nav-settings">
                             <span class="material-icons-round">settings</span>
                             <span class="nav-text">Settings</span>
@@ -130,6 +170,9 @@
                 </div>
             </div>
         </aside>
+
+        <!-- Backdrop shown behind the sidebar on mobile -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
         <!-- Main Content Area -->
         <main class="main-content" id="main-content">
@@ -190,5 +233,6 @@
     <script src="js/pages/budget.js"></script>
     <script src="js/pages/analytics.js"></script>
     <script src="js/pages/reports.js"></script>
+    <script src="js/pages/audit.js"></script>
 </body>
 </html>
