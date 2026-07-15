@@ -50,7 +50,7 @@ function renderAnalytics(activeEvent) {
             <div class="stat-card"><div class="stat-label">Cost / Attendee</div><div class="stat-value">…</div></div>
         </div>
 
-        <div class="content-grid fade-in stagger-3" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+        <div class="content-grid fade-in stagger-3" style="align-items:start;">
             <div class="card">
                 <div class="card-header"><h3><i class="material-icons-round" style="vertical-align:middle;">groups</i> Attendance Funnel</h3></div>
                 <div class="card-body" id="attendance-feed"><p class="text-muted">Loading…</p></div>

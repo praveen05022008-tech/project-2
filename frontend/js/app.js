@@ -489,11 +489,11 @@ function applyRoleBasedAccess(role) {
 
 // ─── Initialization ────────────────────────────────────────────────────────────
 
-// Android APK download link. After the first "Build Android APK" workflow run,
-// set this to your release URL, e.g.
-//   https://github.com/<owner>/<repo>/releases/download/apk-latest/eventpro.apk
-// The button then appears on the login screen (hidden inside the installed app).
-const APK_URL = '';
+// Android APK download link. Points at the GitHub "apk-latest" release produced
+// by the Build Android APK workflow. The button appears on the login screen once
+// this is set (and is hidden inside the installed app). The link works after the
+// first APK build finishes (it 404s until then).
+const APK_URL = 'https://github.com/praveen05022008-tech/project-2/releases/download/apk-latest/eventpro.apk';
 
 function setupApkButton() {
     const btn = document.getElementById('download-apk');
@@ -549,16 +549,20 @@ function openFeedbackForm(eventId, title) {
 // ─── In-app notifications ────────────────────────────────────────────────────
 let _notifs = [];
 
-function _notifReadSet() {
-    try { return new Set(JSON.parse(localStorage.getItem('notif_read') || '[]')); }
+function _notifSet(key) {
+    try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); }
     catch (_) { return new Set(); }
 }
+const _notifReadSet = () => _notifSet('notif_read');
+const _notifClearedSet = () => _notifSet('notif_cleared');
 
 async function loadNotifications() {
     if (!localStorage.getItem('jwt_token')) return;
-    try {
-        _notifs = await api.get('/notifications');
-    } catch (_) { _notifs = []; }
+    let all = [];
+    try { all = await api.get('/notifications'); } catch (_) { all = []; }
+    // Hide notifications the user has cleared.
+    const cleared = _notifClearedSet();
+    _notifs = all.filter(n => !cleared.has(n.id));
     const read = _notifReadSet();
     const unread = _notifs.filter(n => !read.has(n.id)).length;
     const badge = document.getElementById('notif-badge');
@@ -572,16 +576,20 @@ function renderNotifDropdown() {
     const dd = document.getElementById('notif-dropdown');
     if (!dd) return;
     const read = _notifReadSet();
-    if (!_notifs.length) {
-        dd.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-muted);">No notifications</div>`;
-    } else {
-        dd.innerHTML = _notifs.map(n => `
+    const list = _notifs.length
+        ? `<div class="notif-list">${_notifs.map(n => `
             <div class="notif-item ${n.level} ${read.has(n.id) ? '' : 'unread'}">
                 <h5>${n.title}</h5>
                 ${n.message ? `<p>${n.message}</p>` : ''}
                 <time>${n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</time>
-            </div>`).join('');
-    }
+            </div>`).join('')}</div>`
+        : `<div class="notif-empty">You're all caught up 🎉</div>`;
+    dd.innerHTML = `
+        <div class="notif-head">
+            <h4>Notifications${_notifs.length ? ` (${_notifs.length})` : ''}</h4>
+            ${_notifs.length ? `<button type="button" onclick="clearAllNotifications()">Clear all</button>` : ''}
+        </div>
+        ${list}`;
 }
 
 function toggleNotifDropdown() {
@@ -596,6 +604,17 @@ function toggleNotifDropdown() {
         const badge = document.getElementById('notif-badge');
         if (badge) badge.style.display = 'none';
     }
+}
+
+function clearAllNotifications() {
+    // Remember cleared ids so they don't reappear, then refresh the panel.
+    const cleared = _notifClearedSet();
+    _notifs.forEach(n => cleared.add(n.id));
+    localStorage.setItem('notif_cleared', JSON.stringify([...cleared]));
+    _notifs = [];
+    renderNotifDropdown();
+    const badge = document.getElementById('notif-badge');
+    if (badge) badge.style.display = 'none';
 }
 
 // Register the service worker (PWA / installable + offline shell).
