@@ -1,6 +1,6 @@
 {
   "appId": "com.eventpro.app",
-  "appName": "EventPro",
+  "appName": "EventoPro",
   "webDir": "www",
   "server": {
     "androidScheme": "https",

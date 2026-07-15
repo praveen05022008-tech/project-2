@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event · EventPro</title>
+    <title>Event · EventoPro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
@@ -65,7 +65,7 @@
             document.getElementById('root').innerHTML = `
                 <div class="pub-brand">
                     <div class="logo-icon"><span class="material-icons-round">celebration</span></div>
-                    <strong style="color:var(--text-primary)">EventPro</strong>
+                    <strong style="color:var(--text-primary)">EventoPro</strong>
                 </div>
                 <span class="badge badge-upcoming">${ev.event_type}</span>
                 <div class="pub-hero">${ev.title}</div>
@@ -116,7 +116,7 @@
                     .then(async r=>{ const j=await r.json(); if(!r.ok) throw new Error(j.detail||'Order failed'); return j; });
                 const pay = order.payment;
                 if (pay.provider==='razorpay' && pay.gateway_order_id && window.Razorpay) {
-                    new Razorpay({ key:pay.key_id, amount:pay.amount, currency:pay.currency, name:'EventPro',
+                    new Razorpay({ key:pay.key_id, amount:pay.amount, currency:pay.currency, name:'EventoPro',
                         order_id:pay.gateway_order_id, prefill:{name, email}, theme:{color:'#667eea'},
                         handler: async (resp)=>{ await finalize(`${API}/orders/${order.order_id}/verify`, {
                             razorpay_payment_id:resp.razorpay_payment_id, razorpay_order_id:resp.razorpay_order_id, razorpay_signature:resp.razorpay_signature }); }

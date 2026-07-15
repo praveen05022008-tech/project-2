@@ -1,4 +1,4 @@
-# EventPro — Complete Testing Guide
+# EventoPro — Complete Testing Guide
 
 A step-by-step guide to test **every role** and **every tab**. Follow it top to
 bottom the first time; afterwards use the per-role sections as a checklist.
@@ -221,7 +221,7 @@ Login: `attendee@eventpro.com`. Sees **Dashboard, Events, AI Center**.
 - Read-only list of events with search/filter.
 
 ### AI Center
-- See §11 — chat with the EventPro AI assistant.
+- See §11 — chat with the EventoPro AI assistant.
 
 ---
 
@@ -403,7 +403,7 @@ Expected: **26 passed**. Run this before every deploy to see what works / breaks
 
 ## 16g. Multi-tenant isolation
 Organizers only see/manage **their own organization's** events; Super Admin sees all.
-- Log in as **organizer@eventpro.com** (EventPro Elite) → 8 events.
+- Log in as **organizer@eventpro.com** (EventoPro Elite) → 8 events.
 - Log in as **organizer2@eventpro.com** (Stellar Events) → only the 2 "Stellar" events.
 - Super Admin → all events. Attendees browse all (to buy tickets).
 - Cross-tenant edits are rejected (403).
@@ -416,7 +416,7 @@ allow camera → point at a FastPass QR. The code auto-fills; submit to record.
 ## 16i. Observability, integrations & backups
 - **Health:** `GET /health` returns DB status; every response carries `X-Response-Time-ms`.
 - **Error monitoring:** set `SENTRY_DSN` to stream errors to Sentry (optional).
-- **Webhooks:** set `WEBHOOK_URL` → EventPro POSTs on `order.paid` and `lead.captured`
+- **Webhooks:** set `WEBHOOK_URL` → EventoPro POSTs on `order.paid` and `lead.captured`
   (wire into Zapier/Make/CRM/Slack).
 - **Calendar:** event details → **Add to Calendar** downloads an `.ics` (Google/Outlook/Apple).
 - **Backups:** Users tab → **Backup** (Super Admin) downloads a full JSON snapshot;

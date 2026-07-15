@@ -9,7 +9,7 @@ async function initAnalytics() {
     `;
 
     try {
-        analyticsEvents = await api.get('/events');
+        analyticsEvents = await api.get('/my-events');
         const activeEvent = analyticsEvents.length > 0 ? analyticsEvents[0] : null;
 
         if (!activeEvent) {

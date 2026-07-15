@@ -19,14 +19,14 @@ from app.observability import (
 from app.routes import (
     dashboard, events, vendors, settings, ai_chat,
     operations, budget, analytics, reports, auth, audit, checkin, orders, users, admin,
-    public, feedback, notifications, copilot,
+    public, feedback, notifications, copilot, me, attendance, portal,
 )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Create database tables on startup."""
-    logger.info("Starting EventPro Management API...")
+    logger.info("Starting EventoPro Management API...")
     init_sentry()
     try:
         create_tables()
@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="EventPro Management API",
+    title="EventoPro Management API",
     description="Professional Event Management SaaS Platform API",
     version="1.0.0",
     lifespan=lifespan,
@@ -87,7 +87,7 @@ app.include_router(public.router)   # browse events + guest ticket checkout
 # Protected routers — every endpoint requires a valid authenticated user.
 # Fine-grained role checks are applied at the individual endpoint level.
 protected = [dashboard, events, vendors, settings, ai_chat, operations, budget, analytics, reports,
-             audit, checkin, orders, users, admin, feedback, notifications, copilot]
+             audit, checkin, orders, users, admin, feedback, notifications, copilot, me, attendance, portal]
 for module in protected:
     app.include_router(module.router, dependencies=[Depends(get_current_user)])
 

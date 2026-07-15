@@ -9,7 +9,7 @@ async function initBudget() {
     `;
 
     try {
-        budgetEvents = await api.get('/events');
+        budgetEvents = await api.get('/my-events');
         const activeEvent = budgetEvents.length > 0 ? budgetEvents[0] : null;
 
         if (!activeEvent) {

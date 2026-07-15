@@ -6,7 +6,9 @@ from collections import defaultdict
 from cerebras.cloud.sdk import Cerebras
 
 from app.database import get_db
-from app.models import Event, EventVendor, Vendor, Settings
+from app.core.deps import get_current_user
+from app.core.scoping import can_access_event
+from app.models import Event, EventVendor, Vendor, Settings, User
 
 router = APIRouter(prefix="/api/budget", tags=["Budget"])
 
@@ -142,11 +144,13 @@ def _ai_narrative(event, analysis):
 
 
 @router.get("/analysis/{event_id}")
-def get_budget_analysis(event_id: int, db: Session = Depends(get_db)):
+def get_budget_analysis(event_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Full budget intelligence: deterministic math + optional AI narrative."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not can_access_event(db, current_user, event_id):
+        raise HTTPException(status_code=403, detail="This event is outside your access")
 
     # Join assignments with vendor categories
     assignments = db.query(EventVendor).filter(EventVendor.event_id == event_id).all()

@@ -5,7 +5,9 @@ import json
 from cerebras.cloud.sdk import Cerebras
 
 from app.database import get_db
-from app.models import Event
+from app.core.deps import get_current_user
+from app.core.scoping import can_access_event
+from app.models import Event, User
 from app.routes.checkin import live_aggregates
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
@@ -122,11 +124,13 @@ def _ai_insight(event, a):
 
 
 @router.get("/{event_id}")
-def get_analytics(event_id: int, db: Session = Depends(get_db)):
+def get_analytics(event_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Attendance prediction + marketing analysis from real data (AI optional)."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not can_access_event(db, current_user, event_id):
+        raise HTTPException(status_code=403, detail="This event is outside your access")
 
     agg = live_aggregates(db, event_id)
     checked_in = agg["total_entries"]

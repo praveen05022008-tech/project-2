@@ -1,5 +1,8 @@
 registerPage('copilot', initCopilot);
 
+// Conversation memory so the Copilot remembers details across messages.
+let copilotHistory = [];
+
 const COPILOT_SUGGESTIONS = [
     'Show my event stats',
     'How much ticket revenue so far?',
@@ -7,15 +10,19 @@ const COPILOT_SUGGESTIONS = [
     'Write a short marketing post for my next event',
 ];
 
-function initCopilot() {
+async function initCopilot() {
+    copilotHistory = [];
     const c = document.getElementById('page-container');
     c.innerHTML = `
-        <div class="dashboard-header animate-fade-in stagger-1" style="margin-bottom:16px;">
-            <h3 style="font-size:1.6rem;color:var(--text-primary);">
-                <span class="material-icons-round" style="vertical-align:middle;color:var(--accent-primary);">auto_awesome</span>
-                AI Copilot
-            </h3>
-            <p style="color:var(--text-muted);">Ask in plain English — create events, check stats/revenue, draft marketing copy.</p>
+        <div class="dashboard-header animate-fade-in stagger-1" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+            <div>
+                <h3 style="font-size:1.6rem;color:var(--text-primary);">
+                    <span class="material-icons-round" style="vertical-align:middle;color:var(--accent-primary);">auto_awesome</span>
+                    AI Copilot
+                </h3>
+                <p style="color:var(--text-muted);">Ask in plain English — create events, check stats/revenue, draft marketing copy.</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="newCopilotChat()"><span class="material-icons-round">add</span> New chat</button>
         </div>
         <div class="card card-glow fade-in stagger-2">
             <div class="card-body">
@@ -34,7 +41,27 @@ function initCopilot() {
         const v = document.getElementById('copilot-input').value.trim();
         if (v) copilotAsk(v);
     });
-    copilotBubble('assistant', "Hi! I'm your Copilot. Try: “show my stats”, “how much revenue?”, or “create a Corporate event for client Acme on 2026-12-01”.");
+
+    // Load saved conversation (ChatGPT-style continuity).
+    let past = [];
+    try { past = await api.get('/copilot/history'); } catch (_) { past = []; }
+    if (past.length) {
+        past.forEach(m => {
+            copilotBubble(m.role === 'assistant' ? 'assistant' : 'user', m.content);
+            copilotHistory.push({ role: m.role, content: m.content });
+        });
+    } else {
+        copilotBubble('assistant', "Hi! I'm your Copilot. Try: “show my stats”, “how much revenue?”, or “create a Corporate event for client Acme on 2026-12-01”.");
+    }
+}
+
+async function newCopilotChat() {
+    try { await api.delete('/copilot/history'); } catch (_) { /* ignore */ }
+    copilotHistory = [];
+    const log = document.getElementById('copilot-log');
+    if (log) log.innerHTML = '';
+    copilotBubble('assistant', "New chat started. What would you like to do?");
+    showToast('Started a new chat', 'info');
 }
 
 function copilotBubble(who, html) {
@@ -71,8 +98,12 @@ async function copilotAsk(message) {
     copilotBubble('user', message);
     const thinking = copilotBubble('assistant', '<em style="color:var(--text-muted)">Thinking…</em>');
     try {
-        const res = await api.post('/copilot', { message });
+        const res = await api.post('/copilot', { message, history: copilotHistory.slice(-10) });
         thinking.innerHTML = (res.reply || '…') + renderCopilotResult(res.result);
+        // Record the turn so the Copilot remembers context on the next message.
+        copilotHistory.push({ role: 'user', content: message });
+        copilotHistory.push({ role: 'assistant', content: res.reply || '' });
+        if (copilotHistory.length > 20) copilotHistory = copilotHistory.slice(-20);
         // Refresh relevant page data if an event was created
         if (res.action === 'create_event' && res.result && res.result.event_id) {
             showToast('Event created by Copilot', 'success');

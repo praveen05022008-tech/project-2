@@ -1,6 +1,6 @@
-/* EventPro service worker — network-first so code updates always propagate,
-   with an offline cache fallback for the app shell. */
-const CACHE = 'eventpro-v3';
+/* EventoPro service worker — network-first, HTTP-cache-bypassing so code updates
+   always propagate immediately, with an offline cache fallback for the app shell. */
+const CACHE = 'eventpro-v5';
 const SHELL = ['/', '/css/style.css', '/js/app.js', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (e) => {
@@ -20,9 +20,11 @@ self.addEventListener('fetch', (e) => {
   // Never intercept API calls — always hit the network directly.
   if (req.method !== 'GET' || req.url.includes('/api/')) return;
 
-  // Network-first: fetch fresh, update cache, fall back to cache when offline.
+  // Network-first with cache:'reload' → bypass the browser HTTP cache entirely so
+  // the freshest file is always fetched. Update the offline cache, fall back to it
+  // only when the network is unavailable.
   e.respondWith(
-    fetch(req)
+    fetch(new Request(req.url, { cache: 'reload', credentials: req.credentials }))
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});

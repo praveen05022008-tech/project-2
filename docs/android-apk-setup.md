@@ -1,6 +1,6 @@
-# EventPro — Android App (APK) + CI
+# EventoPro — Android App (APK) + CI
 
-EventPro is a **web app first**. The same app also ships as an **installable
+EventoPro is a **web app first**. The same app also ships as an **installable
 Android APK** built from the identical code with **Capacitor**, and the web UI
 shows a **"Get the Android App"** button once an APK is published.
 

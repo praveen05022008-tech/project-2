@@ -1,6 +1,6 @@
 name: Build Android APK
 
-# Builds the EventPro Android APK in the cloud (no local Android Studio) with
+# Builds the EventoPro Android APK in the cloud (no local Android Studio) with
 # Capacitor and publishes it to a fixed "apk-latest" release so the web app can
 # link to a stable URL:
 #   https://github.com/<OWNER>/<REPO>/releases/download/apk-latest/eventpro.apk
@@ -84,9 +84,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-latest
-          name: EventPro — Android APK (latest)
+          name: EventoPro — Android APK (latest)
           body: |
-            Latest Android build of EventPro.
+            Latest Android build of EventoPro.
             Download `eventpro.apk` below and install it on your phone
             (allow "install from this source" when prompted).
           files: frontend/eventpro.apk

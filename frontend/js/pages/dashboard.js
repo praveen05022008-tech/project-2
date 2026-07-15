@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — Dashboard Page
+   EventoPro — Dashboard Page
    ═══════════════════════════════════════════════════════════════════════════ */
 
 registerPage('dashboard', initDashboard);

@@ -7,6 +7,7 @@ stats/revenue, or draft marketing copy). Falls back to keyword parsing without a
 import json
 import os
 from datetime import date, datetime
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -16,7 +17,7 @@ from cerebras.cloud.sdk import Cerebras
 
 from app.database import get_db
 from app.core.deps import require_roles
-from app.models import Event, Order, User
+from app.models import Event, Order, User, CopilotMessage
 
 router = APIRouter(prefix="/api/copilot", tags=["Copilot"])
 copilot_roles = require_roles("SUPER_ADMIN", "ORGANIZER")
@@ -24,21 +25,38 @@ copilot_roles = require_roles("SUPER_ADMIN", "ORGANIZER")
 api_key = os.getenv("CEREBRAS_API_KEY", "")
 client = Cerebras(api_key=api_key) if api_key else None
 
-SYSTEM = """You are EventPro Copilot for an event-management platform.
-Decide the user's intent and reply ONLY with a compact JSON object, no markdown:
+SYSTEM = """You are EventoPro Copilot for an event-management platform.
+Read the WHOLE conversation and gather details across multiple messages — the user
+often provides the event title, client, date, venue, type and budget over several
+turns. Remember everything already given; never ask again for something the user
+already provided earlier in the conversation.
+
+Reply ONLY with a compact JSON object, no markdown:
 {"action": "<action>", "params": {...}, "reply": "<short friendly reply>"}
 
 Valid actions:
-- "create_event": params {title, client_name, event_date (YYYY-MM-DD), event_type, venue, budget}. If title, client_name, or event_date is missing, instead use action "clarify" and ask for them in reply.
+- "create_event": params {title, client_name, event_date (YYYY-MM-DD), event_type, venue, budget}.
+  As soon as you have title, client_name AND event_date (from anywhere in the
+  conversation), use create_event with ALL known params. Only if one of those three
+  is still missing, use action "clarify" and ask ONLY for the missing field(s).
 - "get_stats": overview of the user's events.
 - "get_revenue": ticket revenue so far.
 - "draft_marketing": put the marketing copy in "reply".
 - "answer": general help/answer in "reply".
-Keep reply under 60 words. Today is %س.""".replace("%س", date.today().isoformat())
+
+Normalize dates to YYYY-MM-DD (e.g. "2026_08-01" -> "2026-08-01"). Do NOT invent
+specific numbers in reply — the app appends real figures. Keep reply under 50 words.
+Today is %س.""".replace("%س", date.today().isoformat())
+
+
+class CopilotMsg(BaseModel):
+    role: str
+    content: str
 
 
 class CopilotIn(BaseModel):
     message: str = Field(..., min_length=1)
+    history: Optional[List[CopilotMsg]] = None
 
 
 def _tenant_events_q(db, user):
@@ -87,12 +105,19 @@ def _fallback(message):
 
 @router.post("")
 def copilot(data: CopilotIn, current_user: User = Depends(copilot_roles), db: Session = Depends(get_db)):
+    # Load the user's stored conversation as context (source of truth for memory).
+    stored = db.query(CopilotMessage).filter(
+        CopilotMessage.user_email == current_user.email
+    ).order_by(CopilotMessage.created_at).all()
+
     if client:
         try:
-            resp = client.chat.completions.create(
-                model="gpt-oss-120b",
-                messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": data.message}],
-            )
+            messages = [{"role": "system", "content": SYSTEM}]
+            for h in stored[-12:]:
+                messages.append({"role": ("assistant" if h.role == "assistant" else "user"),
+                                 "content": (h.content or "")[:1000]})
+            messages.append({"role": "user", "content": data.message})
+            resp = client.chat.completions.create(model="gpt-oss-120b", messages=messages)
             plan = _parse_llm(resp.choices[0].message.content)
         except Exception:
             plan = _fallback(data.message)
@@ -129,4 +154,30 @@ def copilot(data: CopilotIn, current_user: User = Depends(copilot_roles), db: Se
     elif action == "get_revenue":
         result = _do_revenue(db, current_user)
 
+    # Persist the turn so the conversation continues next time (ChatGPT-style).
+    try:
+        db.add(CopilotMessage(user_email=current_user.email, role="user", content=data.message[:2000]))
+        db.add(CopilotMessage(user_email=current_user.email, role="assistant", content=(reply or "")[:2000]))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     return {"action": action, "reply": reply, "result": result}
+
+
+@router.get("/history")
+def copilot_history(current_user: User = Depends(copilot_roles), db: Session = Depends(get_db)):
+    """Return the user's saved Copilot conversation (oldest first)."""
+    msgs = db.query(CopilotMessage).filter(
+        CopilotMessage.user_email == current_user.email
+    ).order_by(CopilotMessage.created_at).all()
+    return [{"role": m.role, "content": m.content,
+             "created_at": m.created_at.isoformat() if m.created_at else None} for m in msgs]
+
+
+@router.delete("/history")
+def clear_copilot_history(current_user: User = Depends(copilot_roles), db: Session = Depends(get_db)):
+    """Start a new chat — clear the user's saved conversation."""
+    db.query(CopilotMessage).filter(CopilotMessage.user_email == current_user.email).delete()
+    db.commit()
+    return {"status": "cleared"}

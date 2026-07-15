@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal, engine, Base
-from app.models import Event, Vendor, EventVendor, Settings, ChatMessage, User, CheckIn, Ticket, TicketType, Order, Tenant
+from app.models import Event, Vendor, EventVendor, Settings, ChatMessage, User, CheckIn, Ticket, TicketType, Order, Tenant, EventStaff, EventSponsor
 from app.models import EventType, EventStatus, VendorCategory, AssignmentStatus, Role
 from app.core.security import get_password_hash
 
@@ -23,7 +23,7 @@ def seed_data():
     # 1. Add Settings
     if not db.query(Settings).first():
         settings = Settings(
-            company_name="EventPro Elite",
+            company_name="EventoPro Elite",
             company_email="contact@eventproelite.com",
             company_phone="+91 98765 43210",
             company_address="123 Marina Bay, Event Hub, Singapore",
@@ -35,9 +35,9 @@ def seed_data():
         print("Settings seeded.")
 
     # 1.2 Add Tenants (organizations) — demonstrates multi-tenant isolation
-    tenant_a = db.query(Tenant).filter(Tenant.name == "EventPro Elite").first()
+    tenant_a = db.query(Tenant).filter(Tenant.name == "EventoPro Elite").first()
     if not tenant_a:
-        tenant_a = Tenant(name="EventPro Elite")
+        tenant_a = Tenant(name="EventoPro Elite")
         tenant_b = Tenant(name="Stellar Events")
         db.add_all([tenant_a, tenant_b])
         db.commit()
@@ -51,7 +51,7 @@ def seed_data():
         users = [
             # Platform owner — no tenant (sees everything)
             User(email="superadmin@eventpro.com", hashed_password=default_password, role=Role.SUPER_ADMIN.value),
-            # Tenant A: EventPro Elite
+            # Tenant A: EventoPro Elite
             User(email="organizer@eventpro.com", hashed_password=default_password, role=Role.ORGANIZER.value, tenant_id=tenant_a.id),
             User(email="staff@eventpro.com", hashed_password=default_password, role=Role.STAFF.value, tenant_id=tenant_a.id),
             # Tenant B: Stellar Events (second organizer to prove isolation)
@@ -163,7 +163,7 @@ def seed_data():
         }
     ]
 
-    # All base events belong to Tenant A (EventPro Elite)
+    # All base events belong to Tenant A (EventoPro Elite)
     for e in events_data:
         e["tenant_id"] = tenant_a.id
 
@@ -276,6 +276,24 @@ def seed_data():
                                   attendee_email=o.buyer_email, tier="General", order_id=o.id))
         db.commit()
         print("Ticket types + orders seeded.")
+
+    # 8. Staff assignments + sponsor participation (per-event scoping)
+    if db.query(EventStaff).count() == 0 and db_events:
+        tenant_a_events = [e for e in db_events if e.title in ("Sharma Wedding", "Tech Innovators Summit 2026")]
+        for e in tenant_a_events:
+            db.add(EventStaff(event_id=e.id, staff_email="staff@eventpro.com", role_label="Gate A"))
+        db.commit()
+        print("Staff assignments seeded.")
+
+    if db.query(EventSponsor).count() == 0 and db_events:
+        for title in ("Tech Innovators Summit 2026", "Summer Music Festival"):
+            e = next((x for x in db_events if x.title == title), None)
+            if e:
+                db.add(EventSponsor(event_id=e.id, sponsor_email="sponsor@eventpro.com",
+                                    company="BrandCorp", contact_phone="+91 90000 12345",
+                                    amount=e.marketing_budget or 100000.0, status="Confirmed"))
+        db.commit()
+        print("Sponsor participation seeded.")
 
     print("Data seeding completed successfully!")
 

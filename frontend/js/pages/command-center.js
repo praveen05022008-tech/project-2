@@ -10,7 +10,7 @@ async function initCommandCenter() {
     `;
 
     try {
-        ccEvents = await api.get('/events');
+        ccEvents = await api.get('/my-events');
         const activeEvent = ccEvents.length > 0 ? ccEvents[0] : null;
 
         if (!activeEvent) {
@@ -62,6 +62,15 @@ function renderCommandCenter(activeEvent) {
                 </button>
                 <button class="btn btn-secondary" onclick="openScanModal(${activeEvent.id})">
                     <i class="material-icons-round">qr_code_scanner</i> Record Check-in
+                </button>
+                <button class="btn btn-secondary" onclick="showAttendanceQR(${activeEvent.id}, '${activeEvent.title.replace(/'/g, "\\'")}')">
+                    <i class="material-icons-round">qr_code_2</i> Attendance QR
+                </button>
+                <button class="btn btn-secondary" onclick="openAttendanceRoster(${activeEvent.id}, '${activeEvent.title.replace(/'/g, "\\'")}')">
+                    <i class="material-icons-round">how_to_reg</i> Staff Attendance
+                </button>
+                <button class="btn btn-secondary" onclick="openCrowdNotify(${activeEvent.id}, '${activeEvent.title.replace(/'/g, "\\'")}')">
+                    <i class="material-icons-round">campaign</i> Notify Crowd
                 </button>
             </div>
         </div>
