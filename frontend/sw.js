@@ -1,6 +1,6 @@
 /* EventPro service worker — network-first so code updates always propagate,
    with an offline cache fallback for the app shell. */
-const CACHE = 'eventpro-v2';
+const CACHE = 'eventpro-v3';
 const SHELL = ['/', '/css/style.css', '/js/app.js', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (e) => {
