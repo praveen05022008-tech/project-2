@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — Events Page (Full CRUD)
+   EventoPro — Events Page (Full CRUD)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 registerPage('events', initEvents);
@@ -75,7 +75,7 @@ async function addToCalendar(eventId) {
         const startLine = start.allDay ? `DTSTART;VALUE=DATE:${start.value}` : `DTSTART:${start.value}`;
         const endLine = end ? (end.allDay ? `DTEND;VALUE=DATE:${end.value}` : `DTEND:${end.value}`) : '';
         const ics = [
-            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//EventPro//EN', 'CALSCALE:GREGORIAN',
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//EventoPro//EN', 'CALSCALE:GREGORIAN',
             'BEGIN:VEVENT',
             `UID:event-${e.id}@eventpro`,
             startLine, endLine,
@@ -204,6 +204,9 @@ function renderEventsTable(events) {
                                     </button>
                                     <button class="action-btn action-btn-view" title="Share public link" onclick="sharePublicLink(${e.id})">
                                         <span class="material-icons-round">share</span>
+                                    </button>
+                                    <button class="action-btn action-btn-view" title="Attendees" onclick="openAttendeeList(${e.id}, '${e.title.replace(/'/g, "\\'")}')">
+                                        <span class="material-icons-round">groups</span>
                                     </button>` : ''}
                                     ${canManageEvents() ? `
                                     <button class="action-btn action-btn-edit" title="Edit" onclick="openEventForm(${e.id})">
@@ -288,6 +291,10 @@ function openEventForm(eventId = null) {
                 <label for="ef-notes">Notes</label>
                 <textarea id="ef-notes" class="form-textarea" placeholder="Additional notes..."></textarea>
             </div>
+            <div class="form-group full-width">
+                <label for="ef-venuemap">Venue Map URL (shown to attendees as a QR)</label>
+                <input type="url" id="ef-venuemap" class="form-input" placeholder="https://maps.google.com/...">
+            </div>
             <div class="form-group full-width" style="margin-top:8px">
                 <div class="modal-footer" style="padding:0;border:none;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -319,6 +326,7 @@ function openEventForm(eventId = null) {
             document.getElementById('ef-attendees').value = event.attendees_count || '';
             document.getElementById('ef-desc').value = event.description || '';
             document.getElementById('ef-notes').value = event.notes || '';
+            document.getElementById('ef-venuemap').value = event.venue_map_url || '';
         }).catch(() => showToast('Failed to load event data', 'error'));
     }
 
@@ -340,6 +348,7 @@ function openEventForm(eventId = null) {
             attendees_count: parseInt(document.getElementById('ef-attendees').value) || 0,
             description: document.getElementById('ef-desc').value.trim() || null,
             notes: document.getElementById('ef-notes').value.trim() || null,
+            venue_map_url: document.getElementById('ef-venuemap').value.trim() || null,
         };
 
         if (!data.title || !data.client_name || !data.event_date) {

@@ -117,6 +117,7 @@ class Event(Base):
     marketing_budget = Column(Float, default=0.0)
     expected_roi = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
+    venue_map_url = Column(String(500), nullable=True)   # organizer-provided venue map link
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
@@ -143,6 +144,7 @@ class Vendor(Base):
     price_range = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
+    availability = Column(String(20), default="Available")   # Available | Busy | Inactive
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
@@ -177,11 +179,44 @@ class EventVendor(Base):
         return f"<EventVendor(event_id={self.event_id}, vendor_id={self.vendor_id})>"
 
 
+class EventStaff(Base):
+    """Assigns a staff member to a specific event (scopes their access + attendance)."""
+    __tablename__ = "event_staff"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    staff_email = Column(String(255), nullable=False, index=True)
+    role_label = Column(String(120), nullable=True)          # e.g. "Gate A", "Usher"
+    attendance = Column(String(20), default="Pending")       # Pending | Present | Absent | Flagged
+    checked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<EventStaff(event_id={self.event_id}, staff='{self.staff_email}')>"
+
+
+class EventSponsor(Base):
+    """Links a sponsor to a specific event they are sponsoring."""
+    __tablename__ = "event_sponsors"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    sponsor_email = Column(String(255), nullable=False, index=True)
+    company = Column(String(255), nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+    amount = Column(Float, default=0.0)
+    status = Column(String(30), default="Interested")        # Interested | Confirmed | Declined
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<EventSponsor(event_id={self.event_id}, sponsor='{self.sponsor_email}')>"
+
+
 class Settings(Base):
     __tablename__ = "settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_name = Column(String(255), default="EventPro Management")
+    company_name = Column(String(255), default="EventoPro Management")
     company_email = Column(String(255), default="info@eventpro.com")
     company_phone = Column(String(50), default="")
     company_address = Column(Text, default="")
@@ -289,6 +324,36 @@ class Notification(Base):
 
     def __repr__(self):
         return f"<Notification(title='{self.title}')>"
+
+
+class CopilotMessage(Base):
+    """Persisted AI Copilot conversation (per user) so history survives reloads."""
+    __tablename__ = "copilot_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_email = Column(String(255), nullable=False, index=True)
+    role = Column(String(20), nullable=False)   # 'user' or 'assistant'
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def __repr__(self):
+        return f"<CopilotMessage(user='{self.user_email}', role='{self.role}')>"
+
+
+class Question(Base):
+    """Attendee Q&A for an event (organizer answers)."""
+    __tablename__ = "questions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    asker_email = Column(String(255), nullable=True)
+    question = Column(Text, nullable=False)
+    answer = Column(Text, nullable=True)
+    answered_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    def __repr__(self):
+        return f"<Question(event_id={self.event_id})>"
 
 
 class Feedback(Base):

@@ -6,10 +6,17 @@ import json
 from cerebras.cloud.sdk import Cerebras
 
 from app.database import get_db
-from app.models import Event, Vendor, EventVendor
+from app.core.deps import get_current_user
+from app.core.scoping import can_access_event
+from app.models import Event, Vendor, EventVendor, User
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/operations", tags=["Operations"])
+
+
+def _assert_access(db, user, event_id):
+    if not can_access_event(db, user, event_id):
+        raise HTTPException(status_code=403, detail="This event is outside your access")
 
 # Initialize Cerebras
 api_key = os.getenv("CEREBRAS_API_KEY", "")
@@ -19,12 +26,13 @@ client = Cerebras(api_key=api_key) if api_key else None
 SIMULATION_STATE = {}
 
 @router.get("/live/{event_id}")
-def get_live_data(event_id: int, db: Session = Depends(get_db)):
+def get_live_data(event_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Simulate real-time operational data for an event."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    
+    _assert_access(db, current_user, event_id)
+
     # Initialize state if not present
     state = SIMULATION_STATE.get(event_id, {
         "zone_a_crowd": 20,
@@ -59,12 +67,13 @@ class LiveStateUpdate(BaseModel):
     staff_active: int
 
 @router.post("/live/{event_id}")
-def update_live_data(event_id: int, update: LiveStateUpdate, db: Session = Depends(get_db)):
+def update_live_data(event_id: int, update: LiveStateUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Manually update real-time operational data for an event."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-        
+    _assert_access(db, current_user, event_id)
+
     SIMULATION_STATE[event_id] = {
         "zone_a_crowd": max(0, min(100, update.zone_a_crowd)),
         "zone_b_crowd": max(0, min(100, update.zone_b_crowd)),
@@ -76,13 +85,14 @@ def update_live_data(event_id: int, update: LiveStateUpdate, db: Session = Depen
     return {"status": "success", "message": "Live data updated successfully"}
 
 @router.get("/predict/{event_id}")
-def get_ai_prediction(event_id: int, db: Session = Depends(get_db)):
+def get_ai_prediction(event_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Analyze live simulation data using the Cerebras AI engine and return recommendations."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-        
-    live_data = get_live_data(event_id, db)
+    _assert_access(db, current_user, event_id)
+
+    live_data = get_live_data(event_id, current_user, db)
     
     prompt = f"""
     You are the AI engine for EventSphere, an intelligent event command center.

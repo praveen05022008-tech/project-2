@@ -1,6 +1,6 @@
 {
-  "name": "EventPro — Event Management Platform",
-  "short_name": "EventPro",
+  "name": "EventoPro — Event Management Platform",
+  "short_name": "EventoPro",
   "description": "AI-powered event management: events, vendors, ticketing, budgets, live ops.",
   "start_url": "/",
   "scope": "/",

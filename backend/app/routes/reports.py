@@ -5,7 +5,9 @@ import json
 from cerebras.cloud.sdk import Cerebras
 
 from app.database import get_db
-from app.models import Event, EventVendor, Settings
+from app.core.deps import get_current_user
+from app.core.scoping import can_access_event
+from app.models import Event, EventVendor, Settings, User
 from app.routes.checkin import live_aggregates
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
@@ -121,11 +123,13 @@ def _ai_augment(event, r):
 
 
 @router.get("/post-event/{event_id}")
-def generate_post_event_report(event_id: int, db: Session = Depends(get_db)):
+def generate_post_event_report(event_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Post-event business + sponsor-ROI report from real data (AI optional)."""
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not can_access_event(db, current_user, event_id):
+        raise HTTPException(status_code=403, detail="This event is outside your access")
 
     vendors = db.query(EventVendor).filter(EventVendor.event_id == event_id).all()
     settings = db.query(Settings).first()

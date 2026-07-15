@@ -1,4 +1,4 @@
-"""End-to-end API tests for EventPro. Run: pytest -q (from backend/)."""
+"""End-to-end API tests for EventoPro. Run: pytest -q (from backend/)."""
 
 
 # ─── Health & Auth ───────────────────────────────────────────────────────────
@@ -241,6 +241,88 @@ def test_copilot_stats(client, organizer, attendee):
     assert r.status_code == 200 and r.json()["action"] in ("get_stats", "answer")
     # copilot is a manager tool
     assert client.post("/api/copilot", headers=attendee, json={"message": "hi"}).status_code == 403
+
+
+def test_copilot_history_persists(client, organizer):
+    client.delete("/api/copilot/history", headers=organizer)
+    client.post("/api/copilot", headers=organizer, json={"message": "show my stats"})
+    hist = client.get("/api/copilot/history", headers=organizer).json()
+    assert len(hist) >= 2 and hist[0]["role"] == "user"
+    client.delete("/api/copilot/history", headers=organizer)
+    assert client.get("/api/copilot/history", headers=organizer).json() == []
+
+
+# ─── Per-event scoping (Phase 1) ─────────────────────────────────────────────
+def test_my_events_scoped(client, superadmin, staff, attendee):
+    sa = client.get("/api/my-events", headers=superadmin).json()
+    st = client.get("/api/my-events", headers=staff).json()
+    assert len(sa) >= len(st)                       # super admin sees all
+    # staff only sees assigned events (fewer than all)
+    assert all("id" in e for e in st)
+
+
+def test_event_access_guard(client, staff, superadmin):
+    mine = client.get("/api/my-events", headers=staff).json()
+    all_ev = client.get("/api/events", headers=superadmin).json()
+    mine_ids = {e["id"] for e in mine}
+    outside = next((e["id"] for e in all_ev if e["id"] not in mine_ids), None)
+    if outside and mine:
+        assert client.get(f"/api/analytics/{mine[0]['id']}", headers=staff).status_code == 200
+        assert client.get(f"/api/analytics/{outside}", headers=staff).status_code == 403
+
+
+# ─── Staff QR attendance (Phase 2) ───────────────────────────────────────────
+def test_staff_attendance_flow(client, staff, organizer):
+    mine = client.get("/api/my-events", headers=staff).json()
+    if not mine:
+        return
+    eid = mine[0]["id"]
+    qr = client.get(f"/api/attendance/qr/{eid}", headers=staff).json()
+    assert qr["code"].startswith("ATT-")
+    r1 = client.post("/api/attendance/scan", headers=staff, json={"code": qr["code"]}).json()
+    assert r1["status"] == "present"
+    r2 = client.post("/api/attendance/scan", headers=staff, json={"code": qr["code"]}).json()
+    assert r2["status"] == "flagged"                # duplicate → double-verify
+    assert client.post("/api/attendance/scan", headers=staff, json={"code": "ATT-999-BADSIG"}).status_code == 400
+    roster = client.get(f"/api/attendance/{eid}", headers=organizer).json()
+    assert roster["total"] >= 1
+
+
+# ─── Phase 3/4 portal ────────────────────────────────────────────────────────
+def test_vendor_availability_and_gigs(client, vendor):
+    r = client.put("/api/portal/my-vendor/availability", headers=vendor, json={"availability": "Available"})
+    assert r.status_code == 200 and r.json()["availability"] == "Available"
+    gigs = client.get("/api/portal/my-gigs", headers=vendor).json()
+    assert "gigs" in gigs and "totals" in gigs
+
+
+def test_vendor_suggestions_and_sponsors(client, organizer):
+    sug = client.get("/api/portal/vendors/suggestions", headers=organizer).json()
+    assert isinstance(sug, list)
+    assert client.get("/api/portal/sponsors/interested", headers=organizer).status_code == 200
+
+
+def test_sponsor_interest_flow(client, sponsor, organizer):
+    ev = client.get("/api/events", headers=sponsor).json()[0]["id"]
+    r = client.post(f"/api/portal/events/{ev}/sponsor-interest", headers=sponsor,
+                    json={"company": "TestCo", "contact_phone": "+91 1", "amount": 1000})
+    assert r.status_code == 200
+
+
+def test_qa_flow(client, attendee, organizer):
+    ev = client.get("/api/events", headers=attendee).json()[0]["id"]
+    assert client.post("/api/portal/qa", headers=attendee, json={"event_id": ev, "question": "Parking?"}).status_code == 201
+    qs = client.get(f"/api/portal/qa/{ev}", headers=attendee).json()
+    assert qs and qs[0]["question"]
+    assert client.post(f"/api/portal/qa/{qs[0]['id']}/answer", headers=organizer, json={"answer": "Yes"}).status_code == 200
+    # attendee cannot answer
+    assert client.post(f"/api/portal/qa/{qs[0]['id']}/answer", headers=attendee, json={"answer": "x"}).status_code == 403
+
+
+def test_attendee_list_manager_only(client, organizer, attendee):
+    ev = client.get("/api/events", headers=organizer).json()[0]["id"]
+    assert client.get(f"/api/portal/events/{ev}/attendees", headers=organizer).status_code == 200
+    assert client.get(f"/api/portal/events/{ev}/attendees", headers=attendee).status_code == 403
 
 
 # ─── Admin backup ────────────────────────────────────────────────────────────

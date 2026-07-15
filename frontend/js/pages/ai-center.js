@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — AI Center Page (Chat Interface)
+   EventoPro — AI Center Page (Chat Interface)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 registerPage('ai-center', initAICenter);
@@ -22,7 +22,7 @@ async function initAICenter() {
                         <span class="material-icons-round">smart_toy</span>
                     </div>
                     <div>
-                        <div class="chat-ai-name">EventPro AI Assistant</div>
+                        <div class="chat-ai-name">EventoPro AI Assistant</div>
                         <div class="chat-ai-status">Online</div>
                     </div>
                 </div>
@@ -54,7 +54,7 @@ async function initAICenter() {
                         <span class="material-icons-round">smart_toy</span>
                     </div>
                     <div class="chat-msg-bubble">
-                        <strong>👋 Welcome to EventPro AI Assistant!</strong><br><br>
+                        <strong>👋 Welcome to EventoPro AI Assistant!</strong><br><br>
                         I'm here to help you plan and manage your events professionally. I can assist with:<br><br>
                         🎊 Wedding planning<br>
                         💼 Corporate events<br>

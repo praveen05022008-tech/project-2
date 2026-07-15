@@ -11,7 +11,7 @@ async function initReports() {
     `;
 
     try {
-        reportsEvents = await api.get('/events');
+        reportsEvents = await api.get('/my-events');
         // Only show reports for completed events, or all if none completed for demo
         const activeEvent = reportsEvents.length > 0 ? reportsEvents[0] : null;
 
@@ -235,7 +235,7 @@ async function downloadReportPDF() {
     wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:760px;background:#fff;color:#111;padding:36px;font-family:Inter,Arial,sans-serif;';
     wrap.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #667eea;padding-bottom:14px;margin-bottom:18px;">
-            <div><div style="font-size:22px;font-weight:800;color:#667eea;">EventPro</div>
+            <div><div style="font-size:22px;font-weight:800;color:#667eea;">EventoPro</div>
                  <div style="font-size:13px;color:#667085;">Post-Event Business Report</div></div>
             <div style="text-align:right;font-size:12px;color:#667085;">${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
         </div>

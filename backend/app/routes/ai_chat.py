@@ -17,7 +17,7 @@ api_key = os.getenv("CEREBRAS_API_KEY", "")
 client = Cerebras(api_key=api_key) if api_key else None
 
 # System prompt for the AI assistant
-SYSTEM_PROMPT = """You are EventPro AI Assistant, a helpful and knowledgeable event management consultant. 
+SYSTEM_PROMPT = """You are EventoPro AI Assistant, a helpful and knowledgeable event management consultant. 
 You help clients plan and manage their events professionally. Your expertise includes:
 
 - Wedding planning and coordination
@@ -145,7 +145,7 @@ When choosing vendors:
 - Can you provide references?"""
 
     elif any(w in message_lower for w in ["hello", "hi", "hey", "help"]):
-        return """👋 **Welcome to EventPro AI Assistant!**
+        return """👋 **Welcome to EventoPro AI Assistant!**
 
 I'm here to help you plan and manage your events. I can assist with:
 
@@ -160,7 +160,7 @@ I'm here to help you plan and manage your events. I can assist with:
 What type of event are you planning? Tell me more and I'll provide tailored guidance!"""
 
     else:
-        return """Thank you for your question! As your EventPro AI Assistant, I can help with:
+        return """Thank you for your question! As your EventoPro AI Assistant, I can help with:
 
 🎯 **Event Planning**: Weddings, corporate events, birthdays, concerts
 📋 **Vendor Management**: Selection, negotiation, coordination

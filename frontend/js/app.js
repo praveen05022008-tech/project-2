@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — Main Application (Router, API Service, Utilities)
+   EventoPro — Main Application (Router, API Service, Utilities)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 // ─── API base URL resolution ─────────────────────────────────────────────────
@@ -26,7 +26,7 @@ if (_override) {
 } else {
     API_BASE = `${window.location.origin}/api`;
 }
-console.log('[EventPro] API base:', API_BASE);
+console.log('[EventoPro] API base:', API_BASE);
 
 // ─── API Service ───────────────────────────────────────────────────────────────
 
@@ -126,6 +126,7 @@ function closeModal() {
     document.getElementById('modal-overlay').classList.remove('active');
     // Release the camera if a QR scan was running in the modal.
     if (typeof stopQrScan === 'function') stopQrScan();
+    if (typeof stopAttendanceScan === 'function') stopAttendanceScan();
 }
 
 // Close modal on overlay click or close button
@@ -469,13 +470,14 @@ function applyRoleBasedAccess(role) {
         } else if (role === 'ORGANIZER') {
             show = true; 
         } else if (role === 'VENDOR') {
-            if (['dashboard', 'events', 'analytics'].includes(link)) show = true;
+            if (['dashboard', 'events', 'analytics', 'budget'].includes(link)) show = true;
         } else if (role === 'STAFF') {
             if (['dashboard', 'command-center', 'events'].includes(link)) show = true;
         } else if (role === 'SPONSOR') {
             if (['dashboard', 'analytics', 'reports'].includes(link)) show = true;
         } else if (role === 'ATTENDEE') {
-            if (['dashboard', 'events', 'ai-center'].includes(link)) show = true;
+            // Attendee: their events only. AI Center removed per product spec.
+            if (['dashboard', 'events'].includes(link)) show = true;
         }
 
         // Audit Logs and User Management are visible to Super Admin only.
@@ -628,9 +630,15 @@ if ('serviceWorker' in navigator) {
         window.location.reload();
     });
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then((reg) => {
-            if (reg.update) reg.update();                 // check for a newer worker
-            setInterval(() => reg.update && reg.update(), 60 * 60 * 1000); // hourly
+        // updateViaCache:'none' → the browser NEVER serves sw.js from HTTP cache,
+        // so a new deploy is detected on the very next load and auto-applied.
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((reg) => {
+            if (reg.update) reg.update();                  // check immediately
+            // Re-check when the tab regains focus + periodically.
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && reg.update) reg.update();
+            });
+            setInterval(() => reg.update && reg.update(), 15 * 60 * 1000); // every 15 min
         }).catch(() => { /* non-fatal */ });
     });
 }

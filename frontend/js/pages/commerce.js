@@ -68,7 +68,7 @@ async function openTicketPurchase(eventId, eventTitle) {
                     key: pay.key_id,
                     amount: pay.amount,
                     currency: pay.currency || 'INR',
-                    name: 'EventPro',
+                    name: 'EventoPro',
                     description: eventTitle,
                     order_id: pay.gateway_order_id,
                     prefill: { email: pay.buyer_email },

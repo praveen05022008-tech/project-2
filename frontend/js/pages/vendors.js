@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — Vendors Page (Full CRUD)
+   EventoPro — Vendors Page (Full CRUD)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 registerPage('vendors', initVendors);
@@ -24,6 +24,8 @@ async function initVendors() {
                 <option value="false">Inactive</option>
             </select>
             <div class="toolbar-spacer"></div>
+            <button class="btn btn-secondary" onclick="openVendorSuggestions()"><span class="material-icons-round">star</span> Top Vendors</button>
+            <button class="btn btn-secondary" onclick="openSponsorList()"><span class="material-icons-round">handshake</span> Sponsors</button>
             <button class="btn btn-primary" id="btn-add-vendor">
                 <span class="material-icons-round">add</span>
                 Add Vendor
