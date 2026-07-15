@@ -1499,6 +1499,24 @@ input, textarea, select { font-family: inherit; }
 }
 .health-row strong { color: var(--text-primary); font-weight: 600; }
 
+/* ─── Sidebar "Get the App" link ────────────────────────────────────────── */
+.sidebar-apk-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    transition: var(--transition-fast);
+}
+.sidebar-apk-link:hover { color: var(--text-primary); border-color: var(--border-glow); }
+.sidebar-apk-link .material-icons-round { font-size: 20px; color: #43e97b; }
+
 /* ─── Notifications bell ─────────────────────────────────────────────────── */
 .notif-wrap { position: relative; }
 .notif-badge {

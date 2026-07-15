@@ -496,13 +496,13 @@ function applyRoleBasedAccess(role) {
 const APK_URL = 'https://github.com/praveen05022008-tech/project-2/releases/download/apk-latest/eventpro.apk';
 
 function setupApkButton() {
-    const btn = document.getElementById('download-apk');
-    if (!btn) return;
     const insideApp = !!window.Capacitor;   // running inside the wrapped Android app
-    if (APK_URL && !insideApp) {
-        btn.href = APK_URL;
-        btn.style.display = 'flex';
-    }
+    if (!APK_URL || insideApp) return;
+    // Login-screen button + in-app sidebar link (available to every logged-in user).
+    ['download-apk', 'sidebar-apk'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.href = APK_URL; el.style.display = 'flex'; }
+    });
 }
 
 // ─── Feedback / rating ───────────────────────────────────────────────────────
@@ -618,9 +618,20 @@ function clearAllNotifications() {
 }
 
 // Register the service worker (PWA / installable + offline shell).
+// Auto-reloads to fresh code when a new version is deployed, so users never get
+// stuck on a stale cached build.
 if ('serviceWorker' in navigator) {
+    let _swReloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (_swReloading) return;
+        _swReloading = true;
+        window.location.reload();
+    });
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => { /* non-fatal */ });
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+            if (reg.update) reg.update();                 // check for a newer worker
+            setInterval(() => reg.update && reg.update(), 60 * 60 * 1000); // hourly
+        }).catch(() => { /* non-fatal */ });
     });
 }
 
