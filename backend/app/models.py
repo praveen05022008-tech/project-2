@@ -212,6 +212,28 @@ class EventSponsor(Base):
         return f"<EventSponsor(event_id={self.event_id}, sponsor='{self.sponsor_email}')>"
 
 
+class AttendanceRequest(Base):
+    """QR-based attendance request for a Vendor or Organiser at an event.
+
+    A staff member scans the participant's per-event QR → a Pending request is
+    created and the participant is notified. Attendance is only recorded once the
+    participant Accepts. Duplicate (event, participant) attendance is prevented and
+    QR codes are rejected once the event is over."""
+    __tablename__ = "attendance_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    participant_email = Column(String(255), nullable=False, index=True)
+    participant_role = Column(String(20), nullable=False)   # VENDOR | ORGANIZER
+    requested_by_email = Column(String(255), nullable=True)  # scanning staff member
+    status = Column(String(20), default="Pending")          # Pending | Accepted | Rejected
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    resolved_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<AttendanceRequest(event_id={self.event_id}, who='{self.participant_email}', status='{self.status}')>"
+
+
 class SponsorProfile(Base):
     """A sponsor's directory profile — surfaced to organizers in the
     'Available Sponsors' panel. Sponsors control their own availability."""

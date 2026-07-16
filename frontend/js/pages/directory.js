@@ -107,8 +107,22 @@ function initDirectoryPanel(key) {
         // Self-cleanup once the panel leaves the DOM (navigation away).
         if (!document.getElementById('dir-body-' + key)) { clearInterval(window.__dirState[key].timer); return; }
         const panel = document.getElementById('dir-panel-' + key);
-        if (panel && !panel.classList.contains('collapsed')) loadDir(key, true);
-    }, 25000);
+        if (panel && !panel.classList.contains('collapsed') && !document.hidden) loadDir(key, true);
+    }, 12000);   // near-real-time: new/updated events surface within ~12s
+}
+
+// Refresh every mounted, expanded panel the instant the tab regains focus, so a
+// sponsor sees a just-created/updated event without waiting for the poll tick.
+if (!window.__dirGlobalRefresh) {
+    window.__dirGlobalRefresh = true;
+    const refreshVisiblePanels = () => {
+        Object.keys(DIRECTORY_CONFIG).forEach(key => {
+            const panel = document.getElementById('dir-panel-' + key);
+            if (panel && !panel.classList.contains('collapsed')) loadDir(key, true);
+        });
+    };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshVisiblePanels(); });
+    window.addEventListener('focus', refreshVisiblePanels);
 }
 
 function toggleDirPanel(key) {

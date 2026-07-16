@@ -76,6 +76,8 @@ def my_gigs(current_user: User = Depends(vendor_only), db: Session = Depends(get
         est_cost = round(income * 0.6, 2)
         gigs.append({
             "event": ev.title if ev else "—",
+            "event_id": ev.id if ev else None,
+            "event_over": bool(ev and (ev.status in ("Completed", "Cancelled"))),
             "date": ev.event_date.isoformat() if ev and ev.event_date else None,
             "role": a.role, "status": a.status,
             "income": income, "est_cost": est_cost, "est_profit": round(income - est_cost, 2),

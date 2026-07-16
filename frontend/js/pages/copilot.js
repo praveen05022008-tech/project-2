@@ -3,12 +3,26 @@ registerPage('copilot', initCopilot);
 // Conversation memory so the Copilot remembers details across messages.
 let copilotHistory = [];
 
-const COPILOT_SUGGESTIONS = [
+const COPILOT_SUGGESTIONS_MANAGER = [
     'Show my event stats',
     'How much ticket revenue so far?',
     'Create a Corporate event "Annual Meet" for client Acme on 2026-12-01, budget 500000',
     'Write a short marketing post for my next event',
 ];
+
+const COPILOT_SUGGESTIONS_SPONSOR = [
+    'If I sponsor ₹5,00,000, how much profit will I get?',
+    'How much should I sponsor?',
+    'What ROI can I expect for ₹2,00,000?',
+    'Which event gives the best sponsorship value?',
+];
+
+function isSponsorCopilot() {
+    return (window.currentUser || {}).role === 'SPONSOR';
+}
+function copilotSuggestions() {
+    return isSponsorCopilot() ? COPILOT_SUGGESTIONS_SPONSOR : COPILOT_SUGGESTIONS_MANAGER;
+}
 
 async function initCopilot() {
     copilotHistory = [];
@@ -20,7 +34,7 @@ async function initCopilot() {
                     <span class="material-icons-round" style="vertical-align:middle;color:var(--accent-primary);">auto_awesome</span>
                     AI Copilot
                 </h3>
-                <p style="color:var(--text-muted);">Ask in plain English — create events, check stats/revenue, draft marketing copy.</p>
+                <p style="color:var(--text-muted);">${isSponsorCopilot() ? 'Ask sponsorship questions — projected ROI, leads, and how much to invest.' : 'Ask in plain English — create events, check stats/revenue, draft marketing copy.'}</p>
             </div>
             <button class="btn btn-secondary btn-sm" onclick="newCopilotChat()"><span class="material-icons-round">add</span> New chat</button>
         </div>
@@ -28,10 +42,10 @@ async function initCopilot() {
             <div class="card-body">
                 <div id="copilot-log" style="min-height:280px;max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding-bottom:8px;"></div>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;" id="copilot-suggestions">
-                    ${COPILOT_SUGGESTIONS.map(s => `<button class="chip" onclick="copilotAsk(this.textContent)" style="background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-secondary);padding:6px 12px;border-radius:20px;font-size:0.8rem;">${s}</button>`).join('')}
+                    ${copilotSuggestions().map(s => `<button class="chip" onclick="copilotAsk(this.textContent)" style="background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-secondary);padding:6px 12px;border-radius:20px;font-size:0.8rem;">${s}</button>`).join('')}
                 </div>
                 <form id="copilot-form" style="display:flex;gap:10px;">
-                    <input id="copilot-input" class="form-input" placeholder="e.g. create a wedding for client Sharma on 2026-11-20" autocomplete="off" style="flex:1;">
+                    <input id="copilot-input" class="form-input" placeholder="${isSponsorCopilot() ? 'e.g. if I sponsor ₹3,00,000 how much profit?' : 'e.g. create a wedding for client Sharma on 2026-11-20'}" autocomplete="off" style="flex:1;">
                     <button class="btn btn-primary" type="submit"><span class="material-icons-round">send</span></button>
                 </form>
             </div>
@@ -50,6 +64,8 @@ async function initCopilot() {
             copilotBubble(m.role === 'assistant' ? 'assistant' : 'user', m.content);
             copilotHistory.push({ role: m.role, content: m.content });
         });
+    } else if (isSponsorCopilot()) {
+        copilotBubble('assistant', "Hi! I'm your Sponsorship Copilot. Ask me things like “if I sponsor ₹5,00,000, how much profit?” or “how much should I sponsor?” and I'll project reach, leads and ROI.");
     } else {
         copilotBubble('assistant', "Hi! I'm your Copilot. Try: “show my stats”, “how much revenue?”, or “create a Corporate event for client Acme on 2026-12-01”.");
     }
@@ -79,6 +95,34 @@ function copilotBubble(who, html) {
 
 function renderCopilotResult(result) {
     if (!result) return '';
+    const inr = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
+    // Sponsor: ROI projection
+    if (result.kind === 'roi') {
+        if (result.error) return '';
+        const pos = result.profit >= 0;
+        return `<div style="margin-top:10px;border-top:1px solid var(--border-color);padding-top:10px;font-size:0.85rem;">
+            <div style="color:var(--text-muted);margin-bottom:6px;">Projection for <strong style="color:var(--text-primary);">${result.event}</strong> · spend ${inr(result.amount)}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>👁️ Impressions: <strong>${result.impressions.toLocaleString('en-IN')}</strong></div>
+                <div>🎯 Est. leads: <strong>${result.leads.toLocaleString('en-IN')}</strong></div>
+                <div>🧮 Cost / lead: <strong>${inr(result.cost_per_lead)}</strong></div>
+                <div>💵 Est. return: <strong>${inr(result.estimated_return)}</strong></div>
+                <div>📈 Est. profit: <strong style="color:${pos ? '#43e97b' : '#f5576c'};">${inr(result.profit)}</strong></div>
+                <div>🚀 ROI: <strong style="color:${result.roi_multiple >= 1 ? '#43e97b' : '#f5a623'};">${result.roi_multiple}×</strong></div>
+            </div>
+            <div style="color:var(--text-muted);font-size:0.72rem;margin-top:8px;">Illustrative estimate based on expected attendance & spend share.</div>
+        </div>`;
+    }
+    // Sponsor: recommended amount + tiers
+    if (result.kind === 'suggest') {
+        if (result.error) return '';
+        return `<div style="margin-top:10px;border-top:1px solid var(--border-color);padding-top:10px;font-size:0.85rem;">
+            <div style="color:var(--text-muted);margin-bottom:8px;">For <strong style="color:var(--text-primary);">${result.event}</strong> (${(result.attendance || 0).toLocaleString('en-IN')} expected) — recommended <strong>${inr(result.recommended)}</strong>.</div>
+            ${result.tiers.map(t => `<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border-color);">
+                <span><strong>${t.name}</strong> · <span style="color:var(--text-muted);">${t.perks}</span></span>
+                <strong>${inr(t.amount)}</strong></div>`).join('')}
+        </div>`;
+    }
     if (result.total_events !== undefined) {
         return `<div style="margin-top:8px;font-size:0.85rem;color:var(--text-secondary);">
             📊 Events: <strong>${result.total_events}</strong> · Upcoming: <strong>${result.upcoming}</strong> · Completed: <strong>${result.completed}</strong> · Budget: <strong>₹${Math.round(result.total_budget).toLocaleString('en-IN')}</strong></div>`;

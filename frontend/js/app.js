@@ -443,6 +443,8 @@ async function checkAuth() {
 
             applyRoleBasedAccess(user.role);
             loadNotifications();
+            // Poll so new notifications + attendance requests surface without a reload.
+            if (!window.__notifTimer) window.__notifTimer = setInterval(loadNotifications, 20000);
 
             // Route from hash
             const hash = window.location.hash.slice(1);
@@ -470,11 +472,11 @@ function applyRoleBasedAccess(role) {
         } else if (role === 'ORGANIZER') {
             show = true; 
         } else if (role === 'VENDOR') {
-            if (['dashboard', 'events', 'analytics', 'budget'].includes(link)) show = true;
+            if (['dashboard', 'command-center', 'events', 'analytics', 'budget'].includes(link)) show = true;
         } else if (role === 'STAFF') {
             if (['dashboard', 'command-center', 'events'].includes(link)) show = true;
         } else if (role === 'SPONSOR') {
-            if (['dashboard', 'analytics', 'reports'].includes(link)) show = true;
+            if (['dashboard', 'analytics', 'reports', 'copilot'].includes(link)) show = true;
         } else if (role === 'ATTENDEE') {
             // Attendee: their events only. AI Center removed per product spec.
             if (['dashboard', 'events'].includes(link)) show = true;
@@ -482,8 +484,8 @@ function applyRoleBasedAccess(role) {
 
         // Audit Logs and User Management are visible to Super Admin only.
         if ((link === 'audit-logs' || link === 'users') && role !== 'SUPER_ADMIN') show = false;
-        // Copilot is for managers (Super Admin / Organizer) only.
-        if (link === 'copilot' && !['SUPER_ADMIN', 'ORGANIZER'].includes(role)) show = false;
+        // Copilot is for managers (Super Admin / Organizer) and Sponsors.
+        if (link === 'copilot' && !['SUPER_ADMIN', 'ORGANIZER', 'SPONSOR'].includes(role)) show = false;
 
         item.style.display = show ? 'block' : 'none';
     });
@@ -550,6 +552,7 @@ function openFeedbackForm(eventId, title) {
 
 // ─── In-app notifications ────────────────────────────────────────────────────
 let _notifs = [];
+let _attReqs = [];   // pending QR attendance requests awaiting my Accept/Reject
 
 function _notifSet(key) {
     try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); }
@@ -566,18 +569,45 @@ async function loadNotifications() {
     const cleared = _notifClearedSet();
     _notifs = all.filter(n => !cleared.has(n.id));
     const read = _notifReadSet();
-    const unread = _notifs.filter(n => !read.has(n.id)).length;
+    let unread = _notifs.filter(n => !read.has(n.id)).length;
+
+    // Pending QR attendance requests (Vendor/Organiser) — shown with Accept/Reject.
+    _attReqs = [];
+    const role = (window.currentUser || {}).role;
+    if (['VENDOR', 'ORGANIZER', 'SUPER_ADMIN'].includes(role)) {
+        try {
+            const reqs = await api.get('/attendance/requests');
+            _attReqs = (reqs || []).filter(r => r.status === 'Pending');
+        } catch (_) { _attReqs = []; }
+    }
+
+    const total = unread + _attReqs.length;
     const badge = document.getElementById('notif-badge');
     if (badge) {
-        badge.textContent = unread > 9 ? '9+' : String(unread);
-        badge.style.display = unread > 0 ? 'flex' : 'none';
+        badge.textContent = total > 9 ? '9+' : String(total);
+        badge.style.display = total > 0 ? 'flex' : 'none';
     }
+    // Keep an open dropdown in sync with freshly-polled requests.
+    const dd = document.getElementById('notif-dropdown');
+    if (dd && dd.classList.contains('open')) renderNotifDropdown();
 }
 
 function renderNotifDropdown() {
     const dd = document.getElementById('notif-dropdown');
     if (!dd) return;
     const read = _notifReadSet();
+
+    // Actionable QR attendance requests (Accept / Reject) pinned at the top.
+    const reqBlock = _attReqs.length ? `<div class="notif-list">${_attReqs.map(r => `
+        <div class="notif-item info unread notif-action">
+            <h5><span class="material-icons-round" style="font-size:15px;vertical-align:middle;">how_to_reg</span> Attendance request</h5>
+            <p>${r.requested_by || 'A staff member'} scanned your QR for <strong>${r.event_title}</strong>.</p>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="btn btn-primary btn-sm" onclick="respondAttendanceRequest(${r.id}, true)"><span class="material-icons-round">check</span> Accept</button>
+                <button class="btn btn-secondary btn-sm" onclick="respondAttendanceRequest(${r.id}, false)"><span class="material-icons-round">close</span> Reject</button>
+            </div>
+        </div>`).join('')}</div>` : '';
+
     const list = _notifs.length
         ? `<div class="notif-list">${_notifs.map(n => `
             <div class="notif-item ${n.level} ${read.has(n.id) ? '' : 'unread'}">
@@ -585,13 +615,23 @@ function renderNotifDropdown() {
                 ${n.message ? `<p>${n.message}</p>` : ''}
                 <time>${n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</time>
             </div>`).join('')}</div>`
-        : `<div class="notif-empty">You're all caught up 🎉</div>`;
+        : (reqBlock ? '' : `<div class="notif-empty">You're all caught up 🎉</div>`);
     dd.innerHTML = `
         <div class="notif-head">
-            <h4>Notifications${_notifs.length ? ` (${_notifs.length})` : ''}</h4>
+            <h4>Notifications${(_notifs.length + _attReqs.length) ? ` (${_notifs.length + _attReqs.length})` : ''}</h4>
             ${_notifs.length ? `<button type="button" onclick="clearAllNotifications()">Clear all</button>` : ''}
         </div>
-        ${list}`;
+        ${reqBlock}${list}`;
+}
+
+async function respondAttendanceRequest(id, accept) {
+    try {
+        const r = await api.post(`/attendance/requests/${id}/respond`, { accept });
+        showToast(r.message || (accept ? 'Attendance confirmed' : 'Request rejected'), accept ? 'success' : 'info');
+        _attReqs = _attReqs.filter(x => x.id !== id);
+        renderNotifDropdown();
+        loadNotifications();
+    } catch (err) { showToast(err.message || 'Failed', 'error'); }
 }
 
 function toggleNotifDropdown() {
@@ -601,10 +641,13 @@ function toggleNotifDropdown() {
     dd.classList.toggle('open', opening);
     if (opening) {
         renderNotifDropdown();
-        // Mark all currently-loaded notifications as read
+        // Mark loaded notifications as read; keep the badge if requests still need action.
         localStorage.setItem('notif_read', JSON.stringify(_notifs.map(n => n.id)));
         const badge = document.getElementById('notif-badge');
-        if (badge) badge.style.display = 'none';
+        if (badge) {
+            badge.textContent = String(_attReqs.length);
+            badge.style.display = _attReqs.length > 0 ? 'flex' : 'none';
+        }
     }
 }
 

@@ -142,6 +142,7 @@ class VendorResponse(BaseModel):
     price_range: Optional[str] = None
     description: Optional[str] = None
     is_active: bool
+    availability: Optional[str] = "Available"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

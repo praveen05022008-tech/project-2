@@ -61,5 +61,6 @@ async function loadVendorGigs() {
                 <ul style="padding-left:18px;margin-top:8px;color:var(--text-secondary);font-size:0.85rem;">
                     ${g.points.map(p => `<li style="margin-bottom:4px;">${p}</li>`).join('')}
                 </ul>
+                ${g.event_id && !g.event_over ? `<button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="showParticipantQR(${g.event_id}, '${(g.event || '').replace(/'/g, "\\'")}')"><span class="material-icons-round">qr_code_2</span> My Attendance QR</button>` : ''}
             </div>`).join('')}`;
 }

@@ -202,10 +202,10 @@ def _staff_view(db, today):
         "heading": "Staff Command View",
         "subheading": "Live operations and assignments that need attention.",
         "cards": [
-            _card("Upcoming Events", str(upcoming), "Scheduled ahead", "event_upcoming", "var(--accent-primary)"),
+            _card("Upcoming Events", str(upcoming), "Scheduled ahead", "upcoming", "var(--accent-primary)"),
             _card("Live Entries", str(live_entries), active.title if active else "No active event", "login", "#f5a623"),
             _card("Busiest Zone", busiest_label, "Highest footfall", "groups", "#f5576c"),
-            _card("Pending Confirmations", str(pending_vendors), "Vendors to confirm", "pending_actions", "#43e97b"),
+            _card("Pending Confirmations", str(pending_vendors), "Vendors to confirm", "pending", "#43e97b"),
         ],
         "list": {
             "title": "Upcoming Events",
