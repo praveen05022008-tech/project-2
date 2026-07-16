@@ -36,8 +36,12 @@ async function initDashboard() {
 function renderDashboard(data) {
     const container = document.getElementById('page-container');
     const stats = data.stats;
+    const role = (window.currentUser || {}).role;
+    const showSponsors = role === 'ORGANIZER' || role === 'SUPER_ADMIN';
 
     container.innerHTML = `
+      <div class="dash-with-panel">
+        <div class="dash-main">
         <!-- Stat Cards -->
         <div class="stats-grid">
             ${renderStatCards(stats)}
@@ -96,10 +100,14 @@ function renderDashboard(data) {
                 </div>
             </div>
         </div>
+        </div>
+        ${showSponsors ? renderDirectoryPanel('sponsors') : ''}
+      </div>
     `;
 
     // Animate stat values
     animateCounters();
+    if (showSponsors) initDirectoryPanel('sponsors');
 }
 
 function renderStatCards(stats) {

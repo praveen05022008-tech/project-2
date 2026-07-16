@@ -340,3 +340,62 @@ def test_audit_records_actions(client, superadmin, organizer):
                 json={"title": "Audit Probe", "client_name": "QA", "event_date": "2027-03-03"})
     logs = client.get("/api/audit-logs?limit=50", headers=superadmin).json()["logs"]
     assert any("event" in (l["action"] or "").lower() for l in logs)
+
+
+# ─── Directory side-panels (Available Sponsors / Active Organisers) ───────────
+def test_directory_sponsors_organizer(client, organizer, sponsor):
+    r = client.get("/api/directory/sponsors", headers=organizer)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) >= 1
+    assert {"company_name", "category", "budget", "location", "availability"} <= set(rows[0].keys())
+    # only available-or-interested surface (no purely "Not Available" sponsor)
+    assert all(x["availability"] != "Not Available" or x["interested"] for x in rows)
+    # sponsors cannot browse the sponsor directory
+    assert client.get("/api/directory/sponsors", headers=sponsor).status_code == 403
+
+
+def test_directory_sponsors_search_and_filter(client, organizer):
+    assert all("tech" in (x["company_name"] + x["category"] + x["location"]).lower()
+               for x in client.get("/api/directory/sponsors?q=tech", headers=organizer).json())
+    fin = client.get("/api/directory/sponsors?category=Finance", headers=organizer).json()
+    assert all(x["category"] == "Finance" for x in fin)
+
+
+def test_directory_sponsorship_request(client, organizer):
+    email = client.get("/api/directory/sponsors", headers=organizer).json()[0]["email"]
+    r = client.post(f"/api/directory/sponsors/{email}/request", headers=organizer,
+                    json={"event_id": None, "message": "Join us"})
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+
+
+def test_directory_organisers_sponsor(client, sponsor, organizer):
+    r = client.get("/api/directory/organisers", headers=sponsor)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) >= 1
+    assert {"organiser_name", "organisation", "event_name", "event_category",
+            "event_date", "location", "event_status"} <= set(rows[0].keys())
+    # only active (Upcoming / In Progress) events surface
+    assert all(x["event_status"] in ("Upcoming", "In Progress") for x in rows)
+    # organizers cannot browse the organiser directory
+    assert client.get("/api/directory/organisers", headers=organizer).status_code == 403
+
+
+def test_directory_collaborate(client, sponsor):
+    eid = client.get("/api/directory/organisers", headers=sponsor).json()[0]["event_id"]
+    r = client.post(f"/api/directory/organisers/{eid}/collaborate", headers=sponsor,
+                    json={"amount": 50000, "message": "Let's collaborate"})
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+
+
+def test_directory_my_profile(client, sponsor):
+    assert client.get("/api/directory/my-profile", headers=sponsor).status_code == 200
+    r = client.put("/api/directory/my-profile", headers=sponsor,
+                   json={"availability": "Open to offers", "budget": 999999})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["availability"] == "Open to offers" and body["budget"] == 999999
+    # invalid availability rejected
+    assert client.put("/api/directory/my-profile", headers=sponsor,
+                      json={"availability": "Whenever"}).status_code == 400

@@ -212,6 +212,28 @@ class EventSponsor(Base):
         return f"<EventSponsor(event_id={self.event_id}, sponsor='{self.sponsor_email}')>"
 
 
+class SponsorProfile(Base):
+    """A sponsor's directory profile — surfaced to organizers in the
+    'Available Sponsors' panel. Sponsors control their own availability."""
+    __tablename__ = "sponsor_profiles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_email = Column(String(255), unique=True, nullable=False, index=True)
+    company_name = Column(String(255), nullable=True)
+    logo_url = Column(String(500), nullable=True)
+    category = Column(String(100), nullable=True)          # industry / sponsorship interest
+    budget = Column(Float, default=0.0)                    # sponsorship budget (₹)
+    location = Column(String(255), nullable=True)
+    availability = Column(String(30), default="Available")  # Available | Open to offers | Not Available
+    description = Column(Text, nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f"<SponsorProfile(email='{self.user_email}', company='{self.company_name}')>"
+
+
 class Settings(Base):
     __tablename__ = "settings"
 

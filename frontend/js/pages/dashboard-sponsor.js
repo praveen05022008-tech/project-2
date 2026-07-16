@@ -14,11 +14,18 @@ registerPage('dashboard-sponsor', async () => {
         window.__spEvents = {};
         allEvents.forEach(e => { window.__spEvents[e.id] = e; });
 
-        c.innerHTML = renderRoleDashboard(data) + `
-            <h4 style="margin:20px 0 12px;font-size:1rem;color:var(--text-primary);">Sponsorship Opportunities</h4>
-            <div class="vendor-grid">
+        c.innerHTML = `
+          <div class="dash-with-panel">
+            <div class="dash-main">
+              ${renderRoleDashboard(data)}
+              <h4 style="margin:20px 0 12px;font-size:1rem;color:var(--text-primary);">Sponsorship Opportunities</h4>
+              <div class="vendor-grid">
                 ${upcoming.length ? upcoming.map(e => sponsorEventCard(e, mineIds.has(e.id))).join('') : '<p class="text-muted">No upcoming events.</p>'}
-            </div>`;
+              </div>
+            </div>
+            ${renderDirectoryPanel('organisers')}
+          </div>`;
+        initDirectoryPanel('organisers');
     } catch (err) {
         console.error(err);
         c.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load dashboard.</div></div>`;

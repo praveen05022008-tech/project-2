@@ -1,6 +1,6 @@
 /* EventoPro service worker — network-first, HTTP-cache-bypassing so code updates
    always propagate immediately, with an offline cache fallback for the app shell. */
-const CACHE = 'eventpro-v5';
+const CACHE = 'eventpro-v6';
 const SHELL = ['/', '/css/style.css', '/js/app.js', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', (e) => {
@@ -17,12 +17,18 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  // Never intercept API calls — always hit the network directly.
-  if (req.method !== 'GET' || req.url.includes('/api/')) return;
+  const url = new URL(req.url);
+  // Only handle same-origin GET requests. Cross-origin resources (Google Fonts,
+  // gstatic, Razorpay, any CDN) MUST pass straight through to the network — if we
+  // reconstruct them here they become CORS requests, fail on opaque responses, and
+  // fall back to index.html, which is why the Material Icons font broke and icons
+  // rendered as their ligature keywords ("store", "celebration", …).
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   // Network-first with cache:'reload' → bypass the browser HTTP cache entirely so
   // the freshest file is always fetched. Update the offline cache, fall back to it
-  // only when the network is unavailable.
+  // only when the network is unavailable. The app-shell ('/') fallback applies only
+  // to navigation requests — never to sub-resources like fonts, CSS or scripts.
   e.respondWith(
     fetch(new Request(req.url, { cache: 'reload', credentials: req.credentials }))
       .then((res) => {
@@ -30,6 +36,6 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         return res;
       })
-      .catch(() => caches.match(req).then((c) => c || caches.match('/')))
+      .catch(() => caches.match(req).then((c) => c || (req.mode === 'navigate' ? caches.match('/') : undefined)))
   );
 });
