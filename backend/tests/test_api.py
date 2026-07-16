@@ -29,6 +29,11 @@ def test_unauthenticated_blocked(client):
 def test_register_role_restriction(client):
     ok = client.post("/api/auth/register", json={"email": "newattendee@test.com", "password": "secret1", "role": "ATTENDEE"})
     assert ok.status_code == 201
+    # Every role except SUPER_ADMIN may self-register.
+    org = client.post("/api/auth/register", json={"email": "neworg@test.com", "password": "secret1", "role": "ORGANIZER"})
+    assert org.status_code == 201 and org.json()["role"] == "ORGANIZER"
+    stf = client.post("/api/auth/register", json={"email": "newstaff@test.com", "password": "secret1", "role": "STAFF"})
+    assert stf.status_code == 201
     bad = client.post("/api/auth/register", json={"email": "hacker@test.com", "password": "secret1", "role": "SUPER_ADMIN"})
     assert bad.status_code == 403
 

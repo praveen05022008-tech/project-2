@@ -8,7 +8,10 @@ registerPage('dashboard-staff', async () => {
             <div class="card card-glow" style="margin-top:20px;">
                 <div class="card-header">
                     <h3><span class="material-icons-round" style="vertical-align:middle;">how_to_reg</span> My Attendance</h3>
-                    <button class="btn btn-primary btn-sm" onclick="openAttendanceScan()"><span class="material-icons-round">qr_code_scanner</span> Check In</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" onclick="openParticipantScan()"><span class="material-icons-round">qr_code_2</span> Scan Vendor/Organiser</button>
+                        <button class="btn btn-primary btn-sm" onclick="openAttendanceScan()"><span class="material-icons-round">qr_code_scanner</span> Check In</button>
+                    </div>
                 </div>
                 <div class="card-body" id="staff-att-list"><div class="loading-state"><div class="spinner"></div></div></div>
             </div>`;

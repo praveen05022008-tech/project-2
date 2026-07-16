@@ -3,6 +3,8 @@ registerPage('command-center', initCommandCenter);
 let ccPollInterval = null;
 let ccEvents = [];
 
+function isVendorCC() { return (window.currentUser || {}).role === 'VENDOR'; }
+
 async function initCommandCenter() {
     const container = document.getElementById('page-container');
     container.innerHTML = `
@@ -31,8 +33,13 @@ function startCommandCenter(activeEvent) {
 
     // Start polling simulation for the selected event
     fetchLiveData(activeEvent.id);
+    if (isVendorCC()) loadVendorCC(activeEvent.id);
     if (ccPollInterval) clearInterval(ccPollInterval);
-    ccPollInterval = setInterval(() => fetchLiveData(activeEvent.id), 10000);
+    ccPollInterval = setInterval(() => {
+        fetchLiveData(activeEvent.id);
+        // Refresh pending attendance requests so new scans surface within ~10s.
+        if (isVendorCC()) loadVendorRequests(activeEvent.id);
+    }, 10000);
 }
 
 function selectCcEvent(id) {
@@ -49,6 +56,7 @@ window.addEventListener('hashchange', () => {
 });
 
 function renderCommandCenter(activeEvent) {
+    if (isVendorCC()) return renderVendorCommandCenter(activeEvent);
     const container = document.getElementById('page-container');
     container.innerHTML = `
         <div class="toolbar fade-in stagger-1">
@@ -71,6 +79,9 @@ function renderCommandCenter(activeEvent) {
                 </button>
                 <button class="btn btn-secondary" onclick="openCrowdNotify(${activeEvent.id}, '${activeEvent.title.replace(/'/g, "\\'")}')">
                     <i class="material-icons-round">campaign</i> Notify Crowd
+                </button>
+                <button class="btn btn-secondary" onclick="showParticipantQR(${activeEvent.id}, '${activeEvent.title.replace(/'/g, "\\'")}')">
+                    <i class="material-icons-round">badge</i> My Attendance QR
                 </button>
             </div>
         </div>
@@ -208,6 +219,165 @@ function setLight(id, status) {
         light.classList.add('healthy');
         label.textContent = "Optimal";
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Vendor Command Center — same layout/design as the organiser's, scoped to a
+//  vendor: crowd status (read-only) + Attendance QR + Staff Attendance +
+//  My Attendance QR with inline Accept/Decline requests + Notifications.
+// ═══════════════════════════════════════════════════════════════════════════
+function renderVendorCommandCenter(activeEvent) {
+    const container = document.getElementById('page-container');
+    const t = activeEvent.title.replace(/'/g, "\\'");
+    container.innerHTML = `
+        <div class="toolbar fade-in stagger-1">
+            ${eventSelectorHTML(ccEvents, activeEvent.id, 'selectCcEvent')}
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="fetchLiveData(${activeEvent.id});loadVendorCC(${activeEvent.id});">
+                    <i class="material-icons-round">refresh</i> Force Refresh
+                </button>
+                <button class="btn btn-secondary" onclick="showAttendanceQR(${activeEvent.id}, '${t}')">
+                    <i class="material-icons-round">qr_code_2</i> Attendance QR
+                </button>
+                <button class="btn btn-secondary" onclick="openAttendanceRoster(${activeEvent.id}, '${t}')">
+                    <i class="material-icons-round">how_to_reg</i> Staff Attendance
+                </button>
+                <button class="btn btn-secondary" onclick="showParticipantQR(${activeEvent.id}, '${t}')">
+                    <i class="material-icons-round">badge</i> My Attendance QR
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid fade-in stagger-2">
+            <div class="traffic-light-card" id="health-crowd">
+                <div class="traffic-light healthy"></div>
+                <h4>Crowd Health</h4>
+                <p class="stat-label">Normal</p>
+            </div>
+            <div class="traffic-light-card" id="health-food">
+                <div class="traffic-light healthy"></div>
+                <h4>Food Inventory</h4>
+                <p class="stat-label">Adequate</p>
+            </div>
+            <div class="traffic-light-card" id="health-vendor">
+                <div class="traffic-light healthy"></div>
+                <h4>Vendors</h4>
+                <p class="stat-label">All Arrived</p>
+            </div>
+            <div class="traffic-light-card" id="health-overall">
+                <div class="traffic-light healthy"></div>
+                <h4>Overall System</h4>
+                <p class="stat-label">Optimal</p>
+            </div>
+        </div>
+
+        <div class="form-grid fade-in stagger-3">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="material-icons-round" style="vertical-align: middle;">sensors</i> AI Risk Predictions</h3>
+                </div>
+                <div class="card-body" id="ai-predictions-feed">
+                    <p class="text-muted">Waiting for AI analysis...</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="material-icons-round" style="vertical-align: middle;">map</i> Crowd Heatmap</h3>
+                </div>
+                <div class="card-body" id="crowd-heatmap">
+                    <p class="text-muted">Loading live zones...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-grid fade-in stagger-4" style="margin-top:20px;">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="material-icons-round" style="vertical-align: middle;">badge</i> My Attendance QR</h3>
+                    <button class="btn btn-secondary btn-sm" onclick="loadVendorCC(${activeEvent.id})"><i class="material-icons-round">refresh</i></button>
+                </div>
+                <div class="card-body">
+                    <div style="text-align:center;">
+                        <div id="vcc-qr" style="background:#fff;padding:14px;border-radius:12px;display:inline-block;line-height:0;min-height:60px;"></div>
+                        <p class="text-muted" style="font-size:0.82rem;margin-top:10px;">Show this to a staff member. Scanned requests appear below — you decide.</p>
+                    </div>
+                    <h4 style="margin:16px 0 10px;font-size:0.95rem;color:var(--text-primary);">Pending Attendance Requests</h4>
+                    <div id="vcc-requests"><div class="loading-state"><div class="spinner"></div></div></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="material-icons-round" style="vertical-align: middle;">notifications</i> Notifications</h3>
+                </div>
+                <div class="card-body" id="vcc-notifs"><div class="loading-state"><div class="spinner"></div></div></div>
+            </div>
+        </div>
+    `;
+}
+
+async function loadVendorCC(eventId) {
+    loadVendorQR(eventId);
+    loadVendorRequests(eventId);
+    loadVendorNotifs();
+}
+
+async function loadVendorQR(eventId) {
+    const el = document.getElementById('vcc-qr');
+    if (!el) return;
+    try {
+        const q = await api.get(`/attendance/my-qr/${eventId}`);
+        el.innerHTML = '';
+        if (window.QRCode) new QRCode(el, { text: q.code, width: 170, height: 170, colorDark: '#0b0d12', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+    } catch (err) {
+        el.innerHTML = `<div style="color:var(--text-muted);font-size:0.82rem;padding:20px;">${err.message || 'QR unavailable'}</div>`;
+    }
+}
+
+async function loadVendorRequests(eventId) {
+    const el = document.getElementById('vcc-requests');
+    if (!el) return;
+    let rows = [];
+    try { rows = await api.get('/attendance/requests'); } catch (_) { rows = []; }
+    const pending = (rows || []).filter(r => r.status === 'Pending' && r.event_id === eventId);
+    if (!pending.length) { el.innerHTML = '<p class="text-muted" style="font-size:0.85rem;">No pending attendance requests.</p>'; return; }
+    el.innerHTML = pending.map(r => {
+        const when = r.created_at ? new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+        const staff = r.requested_by || 'A staff member';
+        return `<div class="ai-alert-card" style="margin-bottom:10px;">
+            <div><strong style="color:var(--text-primary);">${staff}</strong> scanned your QR</div>
+            <div class="text-muted" style="font-size:0.82rem;margin-top:4px;">
+                <span class="material-icons-round" style="font-size:13px;vertical-align:middle;">event</span> ${r.event_title}
+                &nbsp;·&nbsp;<span class="material-icons-round" style="font-size:13px;vertical-align:middle;">schedule</span> ${when}
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+                <button class="btn btn-primary btn-sm" onclick="ccRespondRequest(${r.id}, true, ${eventId})"><span class="material-icons-round">check</span> Accept</button>
+                <button class="btn btn-secondary btn-sm" onclick="ccRespondRequest(${r.id}, false, ${eventId})"><span class="material-icons-round">close</span> Decline</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function ccRespondRequest(id, accept, eventId) {
+    try {
+        const r = await api.post(`/attendance/requests/${id}/respond`, { accept });
+        showToast(r.message || (accept ? 'Attendance confirmed' : 'Request declined'), accept ? 'success' : 'info');
+        loadVendorRequests(eventId);
+        if (typeof loadNotifications === 'function') loadNotifications();
+    } catch (err) { showToast(err.message || 'Failed', 'error'); }
+}
+
+async function loadVendorNotifs() {
+    const el = document.getElementById('vcc-notifs');
+    if (!el) return;
+    let items = [];
+    try { items = await api.get('/notifications'); } catch (_) { items = []; }
+    if (!items.length) { el.innerHTML = '<p class="text-muted" style="font-size:0.85rem;">No notifications yet.</p>'; return; }
+    el.innerHTML = items.slice(0, 8).map(n => `
+        <div class="ai-alert-card" style="margin-bottom:8px;">
+            <h5 style="color:var(--text-primary);font-size:0.88rem;">${n.title}</h5>
+            ${n.message ? `<p style="color:var(--text-secondary);font-size:0.82rem;margin-top:3px;">${n.message}</p>` : ''}
+            <time style="color:var(--text-muted);font-size:0.72rem;">${n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</time>
+        </div>`).join('');
 }
 
 window.openUpdateMetricsModal = async function(eventId) {

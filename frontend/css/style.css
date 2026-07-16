@@ -377,6 +377,10 @@ input, textarea, select { font-family: inherit; }
     -webkit-backdrop-filter: var(--glass-blur);
     border-bottom: 1px solid var(--glass-border);
     flex-shrink: 0;
+    /* Positioned + elevated so the topbar (and its notification dropdown) always
+       paints above the sticky dashboard side-panels, which are positioned too. */
+    position: relative;
+    z-index: 50;
 }
 
 .menu-toggle {
@@ -1672,6 +1676,7 @@ input, textarea, select { font-family: inherit; }
     border-radius: var(--border-radius-lg);
     position: sticky;
     top: 0;
+    z-index: 1;   /* stay below the topbar (z-index:50) so its notification dropdown wins */
     display: flex;
     flex-direction: column;
     overflow: hidden;

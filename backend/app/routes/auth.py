@@ -13,8 +13,10 @@ router = APIRouter(prefix="/api/auth", tags=["Auth"])
 def _client_ip(request: Request):
     return request.client.host if request and request.client else None
 
-# Roles a self-service registration is allowed to request.
-SELF_SERVICE_ROLES = {"ATTENDEE", "VENDOR", "SPONSOR"}
+# Any valid role may self-register EXCEPT the platform owner (super admin), which
+# can only be provisioned by an existing administrator.
+VALID_ROLES = {r.value for r in models.Role}
+BLOCKED_SELF_SERVICE = {"SUPER_ADMIN"}
 
 
 @router.post("/login", response_model=schemas.Token)
@@ -54,16 +56,26 @@ def register(payload: schemas.UserCreate, request: Request, db: Session = Depend
         raise HTTPException(status_code=400, detail="Email is already registered")
 
     requested_role = (payload.role or "ATTENDEE").upper()
-    if requested_role not in SELF_SERVICE_ROLES:
+    if requested_role not in VALID_ROLES or requested_role in BLOCKED_SELF_SERVICE:
         raise HTTPException(
             status_code=403,
             detail="This role cannot be self-registered. Contact an administrator.",
         )
 
+    # Give each self-registered organizer their own isolated workspace (tenant) so
+    # their events/staff/data never mix with other organizers'.
+    tenant_id = None
+    if requested_role == "ORGANIZER":
+        tenant = models.Tenant(name=(payload.email.split("@")[0] or "New") .capitalize() + " Events")
+        db.add(tenant)
+        db.flush()
+        tenant_id = tenant.id
+
     user = models.User(
         email=payload.email,
         hashed_password=get_password_hash(payload.password),
         role=requested_role,
+        tenant_id=tenant_id,
     )
     db.add(user)
     db.commit()
