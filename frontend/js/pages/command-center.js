@@ -53,7 +53,7 @@ function renderCommandCenter(activeEvent) {
     container.innerHTML = `
         <div class="toolbar fade-in stagger-1">
             ${eventSelectorHTML(ccEvents, activeEvent.id, 'selectCcEvent')}
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="btn btn-primary" onclick="fetchLiveData(${activeEvent.id})">
                     <i class="material-icons-round">refresh</i> Force Refresh
                 </button>

@@ -7,6 +7,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <script>
+        /* Reveal Material Icons only once the icon font is loaded (see style.css
+           FOUC guard) — otherwise ligature keywords would flash or stay hidden. */
+        (function () {
+            var reveal = function () { document.documentElement.classList.add('icons-ready'); };
+            if (document.fonts && document.fonts.load) {
+                Promise.race([
+                    document.fonts.load('1em "Material Icons Round"'),
+                    new Promise(function (r) { setTimeout(r, 2500); })
+                ]).then(reveal).catch(reveal);
+            } else { reveal(); }
+        })();
+    </script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
         body { overflow: auto; }
@@ -64,7 +77,7 @@
 
             document.getElementById('root').innerHTML = `
                 <div class="pub-brand">
-                    <div class="logo-icon"><span class="material-icons-round">celebration</span></div>
+                    <img src="/logo.png" alt="EventoPro" style="height:30px;width:auto;max-width:110px;object-fit:contain;">
                     <strong style="color:var(--text-primary)">EventoPro</strong>
                 </div>
                 <span class="badge badge-upcoming">${ev.event_type}</span>

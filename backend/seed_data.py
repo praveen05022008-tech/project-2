@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal, engine, Base
-from app.models import Event, Vendor, EventVendor, Settings, ChatMessage, User, CheckIn, Ticket, TicketType, Order, Tenant, EventStaff, EventSponsor
+from app.models import Event, Vendor, EventVendor, Settings, ChatMessage, User, CheckIn, Ticket, TicketType, Order, Tenant, EventStaff, EventSponsor, SponsorProfile
 from app.models import EventType, EventStatus, VendorCategory, AssignmentStatus, Role
 from app.core.security import get_password_hash
 
@@ -294,6 +294,39 @@ def seed_data():
                                     amount=e.marketing_budget or 100000.0, status="Confirmed"))
         db.commit()
         print("Sponsor participation seeded.")
+
+    # 9. Sponsor directory profiles (power the organizer's "Available Sponsors" panel)
+    if db.query(SponsorProfile).count() == 0:
+        sponsor_profiles = [
+            {"user_email": "sponsor@eventpro.com", "company_name": "BrandCorp", "category": "FMCG",
+             "budget": 1500000.0, "location": "Mumbai, India", "availability": "Available",
+             "contact_phone": "+91 90000 12345", "description": "Consumer brands backing large-scale festivals and expos."},
+            {"user_email": "sponsor.techwave@brands.com", "company_name": "TechWave Solutions", "category": "Technology",
+             "budget": 2500000.0, "location": "Bangalore, India", "availability": "Available",
+             "contact_phone": "+91 90000 22221", "description": "B2B SaaS sponsor focused on developer conferences & summits."},
+            {"user_email": "sponsor.finedge@brands.com", "company_name": "FinEdge Capital", "category": "Finance",
+             "budget": 4000000.0, "location": "Hyderabad, India", "availability": "Open to offers",
+             "contact_phone": "+91 90000 33332", "description": "Fintech sponsor for expos, pitch nights and finance events."},
+            {"user_email": "sponsor.motorone@brands.com", "company_name": "MotorOne", "category": "Automobile",
+             "budget": 3200000.0, "location": "Chennai, India", "availability": "Available",
+             "contact_phone": "+91 90000 44443", "description": "Automotive brand sponsoring launches and lifestyle events."},
+            {"user_email": "sponsor.pulse@brands.com", "company_name": "Pulse Media", "category": "Media",
+             "budget": 900000.0, "location": "Delhi, India", "availability": "Open to offers",
+             "contact_phone": "+91 90000 55554", "description": "Media & broadcast partner for concerts and cultural galas."},
+            {"user_email": "sponsor.wellcare@brands.com", "company_name": "WellCare Health", "category": "Healthcare",
+             "budget": 1200000.0, "location": "Pune, India", "availability": "Available",
+             "contact_phone": "+91 90000 66665", "description": "Healthcare sponsor for community runs and wellness events."},
+            {"user_email": "sponsor.edulift@brands.com", "company_name": "EduLift", "category": "Education",
+             "budget": 600000.0, "location": "Kolkata, India", "availability": "Not Available",
+             "contact_phone": "+91 90000 77776", "description": "EdTech sponsor — currently fully committed this quarter."},
+            {"user_email": "sponsor.stylehub@brands.com", "company_name": "StyleHub Retail", "category": "Retail",
+             "budget": 800000.0, "location": "Ahmedabad, India", "availability": "Available",
+             "contact_phone": "+91 90000 88887", "description": "Retail & fashion brand for weddings and lifestyle expos."},
+        ]
+        for sp in sponsor_profiles:
+            db.add(SponsorProfile(**sp))
+        db.commit()
+        print("Sponsor profiles seeded.")
 
     print("Data seeding completed successfully!")
 

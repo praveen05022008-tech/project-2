@@ -19,7 +19,7 @@ from app.observability import (
 from app.routes import (
     dashboard, events, vendors, settings, ai_chat,
     operations, budget, analytics, reports, auth, audit, checkin, orders, users, admin,
-    public, feedback, notifications, copilot, me, attendance, portal,
+    public, feedback, notifications, copilot, me, attendance, portal, directory,
 )
 
 
@@ -87,7 +87,7 @@ app.include_router(public.router)   # browse events + guest ticket checkout
 # Protected routers — every endpoint requires a valid authenticated user.
 # Fine-grained role checks are applied at the individual endpoint level.
 protected = [dashboard, events, vendors, settings, ai_chat, operations, budget, analytics, reports,
-             audit, checkin, orders, users, admin, feedback, notifications, copilot, me, attendance, portal]
+             audit, checkin, orders, users, admin, feedback, notifications, copilot, me, attendance, portal, directory]
 for module in protected:
     app.include_router(module.router, dependencies=[Depends(get_current_user)])
 
@@ -128,6 +128,10 @@ if os.path.exists(frontend_path):
     @app.get("/icon.svg")
     def serve_icon():
         return FileResponse(os.path.join(frontend_path, "icon.svg"), media_type="image/svg+xml")
+
+    @app.get("/logo.png")
+    def serve_logo():
+        return FileResponse(os.path.join(frontend_path, "logo.png"), media_type="image/png")
 
     @app.get("/e/{event_id}")
     def serve_public_event(event_id: int):
