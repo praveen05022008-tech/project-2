@@ -23,6 +23,34 @@ from app.routes import (
 )
 
 
+def _backfill_sponsor_profiles():
+    """Ensure every SPONSOR account has a directory profile, so they appear in the
+    organiser's 'Available Sponsors' panel. Idempotent — safe to run each startup."""
+    from app.database import SessionLocal
+    from app.models import User, SponsorProfile
+    db = SessionLocal()
+    try:
+        have = {e for (e,) in db.query(SponsorProfile.user_email).all()}
+        sponsors = db.query(User).filter(User.role == "SPONSOR").all()
+        created = 0
+        for u in sponsors:
+            if u.email not in have:
+                db.add(SponsorProfile(
+                    user_email=u.email,
+                    company_name=(u.email.split("@")[0] or "Sponsor").capitalize(),
+                    availability="Available",
+                ))
+                created += 1
+        if created:
+            db.commit()
+            logger.info(f"Backfilled {created} sponsor profile(s)")
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"Sponsor profile backfill skipped: {e}")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Create database tables on startup."""
@@ -31,6 +59,7 @@ async def lifespan(app: FastAPI):
     try:
         create_tables()
         logger.info("Database tables created/verified successfully")
+        _backfill_sponsor_profiles()
     except Exception as e:
         logger.warning(f"Database setup warning: {e}")
     yield

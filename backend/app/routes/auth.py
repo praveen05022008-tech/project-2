@@ -80,6 +80,20 @@ def register(payload: schemas.UserCreate, request: Request, db: Session = Depend
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Sponsors get a directory profile immediately so they show up in the
+    # organiser's "Available Sponsors" panel without any extra step.
+    if requested_role == "SPONSOR":
+        try:
+            db.add(models.SponsorProfile(
+                user_email=user.email,
+                company_name=(user.email.split("@")[0] or "Sponsor").capitalize(),
+                availability="Available",
+            ))
+            db.commit()
+        except Exception:
+            db.rollback()
+
     record_audit(db, user_email=user.email, user_role=user.role,
                  action="Registered a new account", method="POST",
                  path="/api/auth/register", status_code=201, ip_address=_client_ip(request))
