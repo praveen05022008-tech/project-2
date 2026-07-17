@@ -106,6 +106,30 @@ function renderSettings(settings) {
                 </div>
             </div>
 
+            <!-- Appearance -->
+            <div class="card" style="margin-bottom:24px;">
+                <div class="card-header">
+                    <h3>
+                        <span class="material-icons-round" style="color:var(--accent-primary);font-size:20px;vertical-align:middle;margin-right:8px">palette</span>
+                        Appearance
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="sf-theme">Application Theme</label>
+                            <select id="sf-theme" class="form-select" onchange="window.toggleTheme(this.value)">
+                                <option value="dark" ${localStorage.getItem('theme') !== 'light' ? 'selected' : ''}>Dark Mode (Default)</option>
+                                <option value="light" ${localStorage.getItem('theme') === 'light' ? 'selected' : ''}>Light Mode</option>
+                            </select>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+                                Changes are applied instantly and saved to your device.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Save Button -->
             <div style="display:flex;justify-content:flex-end;gap:12px" class="fade-in stagger-3">
                 <button type="button" class="btn btn-secondary" onclick="initSettings()">

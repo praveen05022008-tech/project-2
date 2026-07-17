@@ -665,10 +665,14 @@ function applyTheme(theme) {
     if (meta) meta.setAttribute('content', t === 'light' ? '#F4F1F7' : '#09070C');
 }
 
-function toggleTheme() {
+// Accepts an explicit theme ('light'/'dark') — used by the Settings "Appearance"
+// dropdown — or no argument to flip the current theme (topbar toggle button).
+function toggleTheme(theme) {
+    if (theme === 'light' || theme === 'dark') { applyTheme(theme); return; }
     const cur = document.documentElement.getAttribute('data-theme') || 'dark';
     applyTheme(cur === 'light' ? 'dark' : 'light');
 }
+window.toggleTheme = toggleTheme;
 
 function toggleNotifDropdown() {
     const dd = document.getElementById('notif-dropdown');
