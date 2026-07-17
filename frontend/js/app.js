@@ -651,6 +651,25 @@ async function respondAttendanceRequest(id, accept) {
     } catch (err) { showToast(err.message || 'Failed', 'error'); }
 }
 
+// ─── Theme (light / dark) ────────────────────────────────────────────────────
+// Token-driven: setting data-theme on <html> re-skins every page & role.
+function applyTheme(theme) {
+    const t = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    try { localStorage.setItem('theme', t); } catch (_) {}
+    const icon = document.querySelector('#theme-toggle .material-icons-round');
+    if (icon) icon.textContent = t === 'light' ? 'light_mode' : 'dark_mode';
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.title = t === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', t === 'light' ? '#F4F1F7' : '#09070C');
+}
+
+function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    applyTheme(cur === 'light' ? 'dark' : 'light');
+}
+
 function toggleNotifDropdown() {
     const dd = document.getElementById('notif-dropdown');
     if (!dd) return;
@@ -754,6 +773,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Page refreshed', 'info');
         }
     });
+
+    // Theme toggle (light / dark) — applies across every page & role.
+    applyTheme(localStorage.getItem('theme') || 'dark');
+    const themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
     // Auth handlers
     const loginForm = document.getElementById('login-form');

@@ -25,6 +25,8 @@
            timeout falls back to revealing regardless, so a slow/blocked font shows
            text rather than nothing. */
         (function () {
+            /* Apply the saved theme before first paint to avoid a flash. */
+            try { if (localStorage.getItem('theme') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}
             var reveal = function () { document.documentElement.classList.add('icons-ready'); };
             if (document.fonts && document.fonts.load) {
                 Promise.race([
@@ -303,6 +305,9 @@
                         </button>
                         <div class="notif-dropdown" id="notif-dropdown"></div>
                     </div>
+                    <button class="btn-icon" id="theme-toggle" title="Toggle light / dark theme">
+                        <span class="material-icons-round">dark_mode</span>
+                    </button>
                     <button class="btn-icon" id="refresh-btn" title="Refresh">
                         <span class="material-icons-round">refresh</span>
                     </button>
