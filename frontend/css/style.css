@@ -64,6 +64,40 @@
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* ─── Light Theme Overrides ─────────────────────────────────────────────── */
+body.light-theme {
+    /* Core Colors */
+    --bg-primary: #fcfafb;
+    --bg-secondary: #f4f5f9;
+    --bg-tertiary: #ffffff;
+    --bg-card: rgba(255, 255, 255, 0.6);
+    --bg-card-hover: rgba(255, 255, 255, 0.85);
+
+    /* Text Colors */
+    --text-primary: #1a1a24;
+    --text-secondary: #5c6190;
+    --text-muted: #8a8fa3;
+    --text-inverse: #ffffff;
+
+    /* Border & Shadow */
+    --border-color: rgba(102, 126, 234, 0.15);
+    --border-glow: rgba(102, 126, 234, 0.3);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 30px rgba(102, 126, 234, 0.15);
+
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(102, 126, 234, 0.15);
+}
+
+body.light-theme::before {
+    background: radial-gradient(ellipse at 20% 50%, rgba(250, 112, 154, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(254, 225, 64, 0.06) 0%, transparent 50%);
+}
+
 /* ─── Reset & Base ──────────────────────────────────────────────────────── */
 *, *::before, *::after {
     margin: 0;
@@ -83,6 +117,7 @@ body {
     line-height: 1.6;
     overflow: hidden;
     min-height: 100vh;
+    transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 /* Background gradient animation */
@@ -99,6 +134,7 @@ body::before {
     animation: bgShift 20s ease-in-out infinite;
     z-index: 0;
     pointer-events: none;
+    transition: background var(--transition-base);
 }
 
 @keyframes bgShift {

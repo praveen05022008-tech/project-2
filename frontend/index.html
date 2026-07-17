@@ -12,6 +12,11 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        }
+    </script>
     <!-- Login Page -->
     <div class="login-container" id="login-page">
         <div class="login-card">
