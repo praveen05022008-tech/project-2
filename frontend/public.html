@@ -11,6 +11,7 @@
         /* Reveal Material Icons only once the icon font is loaded (see style.css
            FOUC guard) — otherwise ligature keywords would flash or stay hidden. */
         (function () {
+            try { if (localStorage.getItem('theme') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}
             var reveal = function () { document.documentElement.classList.add('icons-ready'); };
             if (document.fonts && document.fonts.load) {
                 Promise.race([

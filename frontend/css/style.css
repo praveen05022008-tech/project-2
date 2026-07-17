@@ -50,6 +50,13 @@
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-blur: blur(22px);
 
+    /* Input / control surfaces (flip per theme) */
+    --surface-1: var(--surface-1);
+    --surface-1-strong: var(--surface-1-strong);
+    --surface-2: var(--surface-2);
+    --surface-2-strong: var(--surface-2-strong);
+    --surface-3: var(--surface-3);
+
     /* Layout */
     --sidebar-width: 260px;
     --sidebar-collapsed: 76px;
@@ -67,39 +74,79 @@
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ─── Light Theme Overrides ─────────────────────────────────────────────── */
-body.light-theme {
-    /* Core Colors */
-    --bg-primary: #fcfafb;
-    --bg-secondary: #f4f5f9;
-    --bg-tertiary: #ffffff;
-    --bg-card: rgba(255, 255, 255, 0.6);
-    --bg-card-hover: rgba(255, 255, 255, 0.85);
+/* ═══ Light theme ═══════════════════════════════════════════════════════════
+   Token-driven: flipping these variables re-skins every page & role at once.
+   Brand accents (blue → ruby) stay identical for a consistent identity. */
+:root[data-theme="light"] {
+    color-scheme: light;
 
-    /* Text Colors */
-    --text-primary: #1a1a24;
-    --text-secondary: #5c6190;
-    --text-muted: #8a8fa3;
-    --text-inverse: #ffffff;
+    --bg-primary: #F4F1F7;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #ECE7F1;
+    --bg-card: rgba(255, 255, 255, 0.72);
+    --bg-card-hover: rgba(255, 255, 255, 0.9);
 
-    /* Border & Shadow */
-    --border-color: rgba(102, 126, 234, 0.15);
-    --border-glow: rgba(102, 126, 234, 0.3);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
-    --shadow-glow: 0 0 30px rgba(102, 126, 234, 0.15);
+    --text-primary: #17121F;
+    --text-secondary: #5C5766;
+    --text-muted: #8B8794;
+    --text-inverse: #FFFFFF;
 
-    /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(102, 126, 234, 0.15);
+    --border-color: rgba(23, 18, 31, 0.10);
+    --border-glow: rgba(228, 0, 124, 0.30);
+    --shadow-sm: 0 1px 2px rgba(23, 18, 31, 0.08);
+    --shadow-md: 0 8px 24px rgba(23, 18, 31, 0.10);
+    --shadow-lg: 0 22px 50px rgba(23, 18, 31, 0.14);
+    --shadow-glow: 0 0 0 1px rgba(23, 18, 31, 0.05);
+
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(23, 18, 31, 0.08);
+
+    --surface-1: rgba(255, 255, 255, 0.92);
+    --surface-1-strong: #FFFFFF;
+    --surface-2: rgba(255, 255, 255, 0.85);
+    --surface-2-strong: #FFFFFF;
+    --surface-3: rgba(23, 18, 31, 0.03);
 }
 
-body.light-theme::before {
-    background: radial-gradient(ellipse at 20% 50%, rgba(250, 112, 154, 0.1) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 20%, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 80%, rgba(254, 225, 64, 0.06) 0%, transparent 50%);
+/* Light background — soft off-white with a faint maroon/pink wash, never flat. */
+:root[data-theme="light"] body {
+    background-color: var(--bg-primary);
+    background-image: linear-gradient(160deg, #FBEFF5 0%, #F5F0F8 45%, #EFEAF4 100%);
 }
+:root[data-theme="light"] body::before {
+    background:
+        radial-gradient(38% 42% at 6% 4%, rgba(228, 0, 124, 0.10) 0%, transparent 62%),
+        radial-gradient(40% 44% at 96% 98%, rgba(228, 0, 124, 0.08) 0%, transparent 62%),
+        radial-gradient(34% 34% at 88% 10%, rgba(26, 95, 255, 0.05) 0%, transparent 60%);
+}
+:root[data-theme="light"] .light-trails { opacity: 0.4; }
+
+/* Secondary buttons need a subtle dark tint (white-on-white is invisible). */
+:root[data-theme="light"] .btn-secondary {
+    background: rgba(23, 18, 31, 0.045);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+:root[data-theme="light"] .btn-secondary:hover {
+    background: rgba(23, 18, 31, 0.08);
+    border-color: rgba(228, 0, 124, 0.28);
+}
+/* Slightly firmer control borders for definition on white. */
+:root[data-theme="light"] .form-input,
+:root[data-theme="light"] .form-select,
+:root[data-theme="light"] .form-textarea,
+:root[data-theme="light"] .search-box,
+:root[data-theme="light"] .filter-select,
+:root[data-theme="light"] .event-select {
+    border-color: rgba(23, 18, 31, 0.14);
+}
+/* Badge text: darker brand shades for AA contrast on light tints. */
+:root[data-theme="light"] .badge-upcoming,
+:root[data-theme="light"] .badge-pending { color: #2540c9; }
+:root[data-theme="light"] .badge-progress,
+:root[data-theme="light"] .badge-active { color: #1a5fff; }
+:root[data-theme="light"] .badge-completed,
+:root[data-theme="light"] .badge-confirmed { color: #b80066; }
 
 /* ─── Reset & Base ──────────────────────────────────────────────────────── */
 *, *::before, *::after {
@@ -854,7 +901,7 @@ input, textarea, select { font-family: inherit; }
 .form-select,
 .form-textarea {
     padding: 11px 14px;
-    background: rgba(9, 7, 12, 0.6);
+    background: var(--surface-1);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     color: var(--text-primary);
@@ -867,7 +914,7 @@ input, textarea, select { font-family: inherit; }
 .form-select:focus,
 .form-textarea:focus {
     border-color: rgba(26, 95, 255, 0.6);
-    background: rgba(9, 7, 12, 0.75);
+    background: var(--surface-1-strong);
     box-shadow: 0 0 0 3px rgba(26, 95, 255, 0.16), 0 0 18px rgba(26, 95, 255, 0.12);
 }
 
@@ -897,7 +944,7 @@ input, textarea, select { font-family: inherit; }
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(6, 8, 15, 0.8);
+    background: var(--surface-2-strong);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     display: flex;
@@ -1046,7 +1093,7 @@ input, textarea, select { font-family: inherit; }
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(6, 8, 15, 0.5);
+    background: var(--surface-2);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0 14px;
@@ -1082,7 +1129,7 @@ input, textarea, select { font-family: inherit; }
 
 .filter-select {
     padding: 10px 32px 10px 14px;
-    background: rgba(6, 8, 15, 0.5);
+    background: var(--surface-2);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     color: var(--text-secondary);
@@ -1435,7 +1482,7 @@ input, textarea, select { font-family: inherit; }
 
 .chat-input-wrapper {
     flex: 1;
-    background: rgba(6, 8, 15, 0.5);
+    background: var(--surface-2);
     border: 1px solid var(--border-color);
     border-radius: 14px;
     padding: 0 16px;
@@ -1840,7 +1887,7 @@ input, textarea, select { font-family: inherit; }
 
 /* Directory cards */
 .dir-card {
-    background: rgba(6, 8, 15, 0.35);
+    background: var(--surface-3);
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 12px;
