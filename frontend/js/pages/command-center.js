@@ -147,9 +147,9 @@ function updateCCUI(live, prediction) {
     if (heatmapEl) {
         let heatmapHtml = '';
         for (const [zone, density] of Object.entries(live.metrics.crowd_density)) {
-            let color = 'rgba(67, 233, 123, 0.1)';
-            if (density > 60) color = 'rgba(245, 166, 35, 0.1)';
-            if (density > 80) color = 'rgba(245, 87, 108, 0.1)';
+            let color = 'rgba(26, 95, 255, 0.1)';
+            if (density > 60) color = 'rgba(255, 45, 149, 0.1)';
+            if (density > 80) color = 'rgba(228, 0, 124, 0.1)';
             
             heatmapHtml += `
                 <div class="heatmap-zone" style="background: ${color};">
@@ -182,7 +182,7 @@ function updateCCUI(live, prediction) {
         
         if (prediction.resource_optimization) {
             feedEl.innerHTML += `
-                <div class="ai-alert-card" style="border-left-color: #4facfe;">
+                <div class="ai-alert-card" style="border-left-color: #1A5FFF;">
                     <strong>Resource Optimizer</strong>
                     <p class="text-muted">${prediction.resource_optimization}</p>
                 </div>

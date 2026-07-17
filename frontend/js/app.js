@@ -28,6 +28,21 @@ if (_override) {
 }
 console.log('[EventoPro] API base:', API_BASE);
 
+// Turn a FastAPI error detail (string, or a Pydantic 422 array of {loc,msg})
+// into a short, human-readable message instead of raw JSON.
+function formatApiError(detail) {
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+        return detail.map(e => {
+            const field = Array.isArray(e.loc) ? e.loc[e.loc.length - 1] : (e.loc || 'field');
+            const label = String(field).replace(/_/g, ' ');
+            return `${label}: ${e.msg || 'invalid value'}`;
+        }).join('; ');
+    }
+    if (detail && typeof detail === 'object') return detail.msg || JSON.stringify(detail);
+    return String(detail);
+}
+
 // ─── API Service ───────────────────────────────────────────────────────────────
 
 const api = {
@@ -69,7 +84,7 @@ const api = {
                     ? `Server error ${response.status}: ${raw.slice(0, 160)}`
                     : `Request failed (HTTP ${response.status}) with an empty response.`;
             }
-            throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+            throw new Error(formatApiError(detail));
         }
 
         if (raw && body === null) {
@@ -145,7 +160,9 @@ document.addEventListener('keydown', (e) => {
 const pages = {
     dashboard: { title: 'Dashboard', init: null },
     events: { title: 'Events', init: null },
+    'event-qa': { title: 'Ask AI', init: null },
     vendors: { title: 'Vendors', init: null },
+    'my-vendors': { title: 'My Vendors', init: null },
     'ai-center': { title: 'AI Center', init: null },
     'copilot': { title: 'AI Copilot', init: null },
     'command-center': { title: 'Command Center', init: null },
@@ -383,7 +400,7 @@ function svgDonut(segments, centerLabel = '', opts = {}) {
 function svgGauge(pct, opts = {}) {
     const p = Math.max(0, Math.min(100, pct || 0));
     const R = 60, C = 2 * Math.PI * R, cx = 80, cy = 80, sw = 16;
-    const color = opts.color || '#667eea';
+    const color = opts.color || '#1A5FFF';
     const track = opts.track || 'rgba(150,160,200,0.18)';
     const textColor = opts.textColor || 'var(--text-primary)';
     const mutedColor = opts.mutedColor || 'var(--text-muted)';
@@ -474,12 +491,12 @@ function applyRoleBasedAccess(role) {
         } else if (role === 'VENDOR') {
             if (['dashboard', 'command-center', 'events', 'analytics', 'budget'].includes(link)) show = true;
         } else if (role === 'STAFF') {
-            if (['dashboard', 'command-center', 'events'].includes(link)) show = true;
+            if (['dashboard', 'command-center', 'events', 'my-vendors'].includes(link)) show = true;
         } else if (role === 'SPONSOR') {
             if (['dashboard', 'analytics', 'reports', 'copilot'].includes(link)) show = true;
         } else if (role === 'ATTENDEE') {
-            // Attendee: their events only. AI Center removed per product spec.
-            if (['dashboard', 'events'].includes(link)) show = true;
+            // Attendee: their events + the AI Q&A assistant.
+            if (['dashboard', 'events', 'event-qa'].includes(link)) show = true;
         }
 
         // Audit Logs and User Management are visible to Super Admin only.
@@ -516,7 +533,7 @@ function openFeedbackForm(eventId, title) {
             <div class="form-group">
                 <label>Your rating</label>
                 <div id="fb-stars" style="display:flex;gap:6px;font-size:32px;cursor:pointer;">
-                    ${[1,2,3,4,5].map(i => `<span class="material-icons-round fb-star" data-v="${i}" style="color:#f5a623;">star</span>`).join('')}
+                    ${[1,2,3,4,5].map(i => `<span class="material-icons-round fb-star" data-v="${i}" style="color:#FF2D95;">star</span>`).join('')}
                 </div>
                 <input type="hidden" id="fb-rating" value="5">
             </div>

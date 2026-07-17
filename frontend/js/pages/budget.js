@@ -76,10 +76,10 @@ async function fetchBudgetAnalysis(eventId) {
 
 function budgetStatusColor(status) {
     const s = (status || '').toLowerCase();
-    if (s.includes('over')) return '#f5576c';
-    if (s.includes('warning')) return '#f5a623';
+    if (s.includes('over')) return '#E4007C';
+    if (s.includes('warning')) return '#FF2D95';
     if (s.includes('no budget')) return 'var(--text-muted)';
-    return '#43e97b';
+    return '#1A5FFF';
 }
 
 function inr(n) { return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
@@ -88,7 +88,7 @@ function updateBudgetUI(a) {
     // KPI cards
     const kpis = document.getElementById('budget-kpis');
     if (kpis) {
-        const remColor = a.remaining < 0 ? '#f5576c' : '#43e97b';
+        const remColor = a.remaining < 0 ? '#E4007C' : '#1A5FFF';
         kpis.innerHTML = `
             <div class="stat-card"><div class="stat-label">Planned Budget</div><div class="stat-value">${inr(a.planned_budget)}</div></div>
             <div class="stat-card"><div class="stat-label">Projected Cost</div><div class="stat-value" style="color:${budgetStatusColor(a.status)}">${inr(a.projected_final_cost)}</div></div>
@@ -145,7 +145,7 @@ function updateBudgetUI(a) {
                 ${a.margin !== null ? `<p style="font-size:0.85rem;color:var(--text-muted);">Expected revenue ${inr(a.expected_revenue)} · margin ${inr(a.margin)}</p>` : ''}
             </div>`;
         if (a.risk_flags && a.risk_flags.length) {
-            html += `<h4 style="margin:16px 0 8px;font-size:0.9rem;color:#f5576c;">⚠ Risk flags</h4>
+            html += `<h4 style="margin:16px 0 8px;font-size:0.9rem;color:#E4007C;">⚠ Risk flags</h4>
                 <ul style="padding-left:18px;color:var(--text-secondary);font-size:0.85rem;">
                 ${a.risk_flags.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('')}</ul>`;
         }

@@ -130,7 +130,7 @@ function renderVendorCards(vendors) {
                     </div>
                     ${renderStars(v.rating)}
                     <div class="ai-alert-card" style="margin-top: 10px; padding: 10px;">
-                        <strong>AI Performance Score: <span style="color:#4facfe">${Math.floor(v.rating * 18 + 5)}/100</span></strong>
+                        <strong>AI Performance Score: <span style="color:#1A5FFF">${Math.floor(v.rating * 18 + 5)}/100</span></strong>
                         <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Based on past deliveries and budget adherence</p>
                     </div>
                     ${v.description ? `<p style="font-size:0.8rem;color:var(--text-muted);margin-top:10px;line-height:1.5">${v.description.substring(0, 100)}${v.description.length > 100 ? '...' : ''}</p>` : ''}
@@ -323,10 +323,13 @@ async function openVendorRegister(vendorId, name) {
         </form>`);
     document.getElementById('vr-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const eid = document.getElementById('vr-event').value;
-        if (!eid) { showToast('Create an event first to register a vendor', 'error'); return; }
+        const eid = parseInt(document.getElementById('vr-event').value);
+        if (!eid) { showToast('Please select an event to register this vendor for.', 'error'); return; }
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
         try {
             await api.post(`/events/${eid}/vendors`, {
+                event_id: eid,                       // backend requires event_id in the body too
                 vendor_id: vendorId,
                 role: document.getElementById('vr-role').value.trim() || null,
                 agreed_price: parseFloat(document.getElementById('vr-price').value) || 0,
@@ -334,6 +337,10 @@ async function openVendorRegister(vendorId, name) {
             });
             showToast(`${name} registered for the event`, 'success');
             closeModal();
-        } catch (err) { showToast(err.message || 'Failed to register vendor', 'error'); }
+            if (typeof loadVendors === 'function') loadVendors();   // refresh the list
+        } catch (err) {
+            if (btn) btn.disabled = false;
+            showToast(err.message || 'Failed to register vendor', 'error');
+        }
     });
 }

@@ -49,7 +49,7 @@ async function loadVendorGigs() {
     el.innerHTML = `
         <div class="stats-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:14px;">
             <div class="stat-card"><div class="stat-label">Total Income</div><div class="stat-value">${inrf(data.totals.income)}</div></div>
-            <div class="stat-card"><div class="stat-label">Est. Profit</div><div class="stat-value" style="color:#43e97b;">${inrf(data.totals.est_profit)}</div></div>
+            <div class="stat-card"><div class="stat-label">Est. Profit</div><div class="stat-value" style="color:#1A5FFF;">${inrf(data.totals.est_profit)}</div></div>
             <div class="stat-card"><div class="stat-label">Gigs</div><div class="stat-value">${data.totals.gig_count}</div></div>
         </div>
         ${data.gigs.map(g => `

@@ -72,7 +72,7 @@ async function openTicketPurchase(eventId, eventTitle) {
                     description: eventTitle,
                     order_id: pay.gateway_order_id,
                     prefill: { email: pay.buyer_email },
-                    theme: { color: '#667eea' },
+                    theme: { color: '#1A5FFF' },
                     handler: async (resp) => {
                         try {
                             const paid = await api.post(`/commerce/orders/${order.id}/verify`, {
@@ -102,7 +102,7 @@ async function openTicketPurchase(eventId, eventTitle) {
 function showPurchaseSuccess(paid, eventTitle) {
     openModal('🎟️ Payment Successful', `
         <div style="text-align:center;padding:10px 0;">
-            <span class="material-icons-round" style="font-size:56px;color:#43e97b;">check_circle</span>
+            <span class="material-icons-round" style="font-size:56px;color:#1A5FFF;">check_circle</span>
             <h3 style="margin:12px 0;color:var(--text-primary);">You're in!</h3>
             <p class="text-muted">${paid.tickets.length} ticket(s) issued for ${eventTitle}.</p>
             <p style="margin-top:10px;">Ticket code: <code style="color:var(--accent-tertiary);">${paid.tickets[0]}</code></p>

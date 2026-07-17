@@ -22,7 +22,7 @@ async function refreshQA(eventId, title) {
             <div class="ai-alert-card" style="margin-bottom:10px;">
                 <strong>Q:</strong> ${q.question}
                 ${q.answer
-                    ? `<p style="margin-top:6px;color:#43e97b;"><strong>A:</strong> ${q.answer}</p>`
+                    ? `<p style="margin-top:6px;color:#1A5FFF;"><strong>A:</strong> ${q.answer}</p>`
                     : `<p style="margin-top:6px;color:var(--text-muted);font-size:0.8rem;">Awaiting answer…</p>
                        ${canAnswer ? `<button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="answerQA(${q.id}, ${eventId}, '${esc}')">Answer</button>` : ''}`}
             </div>`).join('') : '<p class="text-muted">No questions yet — be the first to ask.</p>'}`;
@@ -63,8 +63,8 @@ async function downloadCertificate(ev) {
     const pdf = new jsPDF('l', 'mm', 'a4');   // landscape
     const W = 297, H = 210;
     pdf.setFillColor(15, 17, 21); pdf.rect(0, 0, W, H, 'F');
-    pdf.setDrawColor(102, 126, 234); pdf.setLineWidth(3); pdf.rect(10, 10, W - 20, H - 20);
-    pdf.setTextColor(102, 126, 234); pdf.setFontSize(14);
+    pdf.setDrawColor(26, 95, 255); pdf.setLineWidth(3); pdf.rect(10, 10, W - 20, H - 20);
+    pdf.setTextColor(26, 95, 255); pdf.setFontSize(14);
     pdf.text('EVENTOPRO', W / 2, 32, { align: 'center' });
     pdf.setTextColor(255, 255, 255); pdf.setFontSize(30);
     pdf.text('Certificate of Participation', W / 2, 70, { align: 'center' });
@@ -162,7 +162,7 @@ async function openVendorSuggestions() {
         ${rows.map(v => `<div class="ai-alert-card" style="margin-bottom:8px;display:flex;align-items:center;gap:10px;">
             <span class="vendor-category-badge">${v.category}</span>
             <strong style="color:var(--text-primary);flex:1;">${v.name}</strong>
-            <span style="color:#f5a623;">★ ${v.rating}</span>
+            <span style="color:#FF2D95;">★ ${v.rating}</span>
             <span class="badge ${v.availability === 'Available' ? 'badge-completed' : 'badge-inactive'}">${v.availability}</span>
         </div>`).join('') || '<p class="text-muted">No vendors found.</p>'}`;
 }
