@@ -2001,8 +2001,11 @@ input, textarea, select { font-family: inherit; }
     position: fixed;
     inset: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    /* Scroll when the card is taller than the viewport; margin:auto on the card
+       centers it when it fits AND keeps the top reachable when it overflows. */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 24px 16px;
     background: var(--bg-primary);
     z-index: 1000;
 }
@@ -2016,6 +2019,7 @@ input, textarea, select { font-family: inherit; }
     padding: 40px;
     width: 100%;
     max-width: 420px;
+    margin: auto;
     box-shadow: var(--shadow-lg);
 }
 
