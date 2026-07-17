@@ -128,13 +128,10 @@ body {
     line-height: 1.6;
     overflow: hidden;
     min-height: 100vh;
-<<<<<<< HEAD
     transition: background-color var(--transition-base), color var(--transition-base);
-=======
     max-width: 100%;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
->>>>>>> 3740c80de03df76873152bc5b90eea78d971324d
 }
 
 /* ─── Material Icons (ligature font) ────────────────────────────────────────
