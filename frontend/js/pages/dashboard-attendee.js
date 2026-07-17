@@ -1,55 +1,57 @@
-registerPage('dashboard-attendee', () => {
+// Attendee dashboard — FastPass + upcoming events as cards with per-event actions.
+registerPage('dashboard-attendee', async () => {
     const container = document.getElementById('page-container');
-    container.innerHTML = `
-        <div class="dashboard-header animate-fade-in stagger-1" style="margin-bottom: 24px;">
-            <h3 style="font-size: 1.6rem; color: var(--text-primary);">Attendee Experience</h3>
-            <p style="color: var(--text-muted);">Your personalized event schedule, maps, and AI concierge.</p>
-        </div>
-        
-        <div class="stats-grid animate-fade-in stagger-2">
-            <div class="stat-card card-glow">
-                <div class="stat-card-header">
-                    <span class="stat-label">Upcoming Session</span>
-                    <div class="stat-card-icon"><span class="material-icons-round">event</span></div>
-                </div>
-                <div class="stat-value" style="font-size: 1.4rem;">Keynote Speech</div>
-                <div style="font-size: 0.8rem; margin-top: 8px; color: var(--accent-tertiary);">
-                    <span class="material-icons-round" style="font-size: 14px; vertical-align: middle;">schedule</span>
-                    Starts in 45 mins
-                </div>
-            </div>
-            
-            <div class="stat-card card-glow">
-                <div class="stat-card-header">
-                    <span class="stat-label">Location</span>
-                    <div class="stat-card-icon"><span class="material-icons-round">place</span></div>
-                </div>
-                <div class="stat-value" style="font-size: 1.4rem;">Main Auditorium</div>
-                <div style="font-size: 0.8rem; margin-top: 8px; color: var(--text-muted);">
-                    Follow the blue signs from the lobby.
-                </div>
-            </div>
-            
-            <div class="stat-card card-glow" style="display: flex; align-items: center; justify-content: center; flex-direction: column;">
-                <span class="material-icons-round" style="font-size: 48px; color: var(--accent-primary); margin-bottom: 8px;">qr_code_2</span>
-                <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">Show FastPass Ticket</button>
-            </div>
-        </div>
+    container.innerHTML = `<div class="loading-state"><div class="spinner"></div></div>`;
+    try {
+        const events = await api.get('/my-events/upcoming');
+        const today = new Date().toISOString().slice(0, 10);
+        const next = events[0] || null;
 
-        <div class="card card-glow animate-fade-in stagger-3 ai-alert-card" style="margin-top: 20px; border-left-color: var(--accent-tertiary); background: rgba(0, 210, 255, 0.05);">
-            <div class="card-header" style="border: none; padding-bottom: 0;">
-                <h3 style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons-round" style="color: var(--accent-tertiary);">smart_toy</span>
-                    AI Concierge Suggestion
-                </h3>
+        container.innerHTML = `
+            <div class="dashboard-header animate-fade-in stagger-1" style="margin-bottom:18px;">
+                <h3 style="font-size:1.6rem;color:var(--text-primary);">Your Events</h3>
+                <p style="color:var(--text-muted);">Tickets, venue maps, Q&A and more.</p>
             </div>
-            <div class="card-body">
-                <p style="color: var(--text-secondary); margin-bottom: 12px;">"Since you attended the Python Workshop yesterday, you might enjoy the 'Future of AI' panel happening in Room B at 2:00 PM today. Would you like me to add it to your schedule?"</p>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-secondary btn-sm" style="background: var(--accent-gradient-2); color: white; border: none;">Add to Schedule</button>
-                    <button class="btn btn-secondary btn-sm">Dismiss</button>
+            <div id="fastpass-slot"></div>
+            <h4 style="margin:8px 0 12px;font-size:1rem;color:var(--text-primary);">Upcoming Events</h4>
+            <div class="vendor-grid" id="att-events">
+                ${events.length ? events.map(attendeeEventCard).join('') : '<p class="text-muted">No upcoming events right now. Check back soon!</p>'}
+            </div>`;
+
+        if (next) renderFastPass('fastpass-slot', next);
+        // Stash events so card actions can look them up
+        window.__attEvents = {};
+        events.forEach(e => { window.__attEvents[e.id] = e; });
+    } catch (err) {
+        console.error('Attendee dashboard failed', err);
+        container.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load your events.</div></div>`;
+    }
+});
+
+function attendeeEventCard(e) {
+    const t = e.title.replace(/'/g, "\\'");
+    const done = e.status === 'Completed';
+    return `
+        <div class="vendor-card">
+            <div class="vendor-card-top"></div>
+            <div style="padding:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                    <span class="vendor-category-badge">${e.event_type}</span>
+                    ${getStatusBadge(e.status)}
+                </div>
+                <h4 style="margin:10px 0 4px;color:var(--text-primary);">${e.title}</h4>
+                <div style="font-size:0.82rem;color:var(--text-muted);">
+                    <span class="material-icons-round" style="font-size:14px;vertical-align:middle;">event</span> ${formatDate(e.event_date)}
+                    &nbsp;·&nbsp;<span class="material-icons-round" style="font-size:14px;vertical-align:middle;">place</span> ${e.venue || 'TBA'}
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;">
+                    <button class="btn btn-primary btn-sm" onclick="openTicketPurchase(${e.id}, '${t}')"><span class="material-icons-round">confirmation_number</span> Tickets</button>
+                    <button class="btn btn-secondary btn-sm" onclick="showVenueMap(window.__attEvents[${e.id}])"><span class="material-icons-round">map</span> Map</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openEventQA(${e.id}, '${t}')"><span class="material-icons-round">forum</span> Q&A</button>
+                    <button class="btn btn-secondary btn-sm" onclick="showEventVendors(${e.id}, '${t}')"><span class="material-icons-round">store</span> Vendors</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openFeedbackForm(${e.id}, '${t}')"><span class="material-icons-round">rate_review</span> Rate</button>
+                    ${done ? `<button class="btn btn-secondary btn-sm" onclick="downloadCertificate(window.__attEvents[${e.id}])"><span class="material-icons-round">workspace_premium</span> Certificate</button>` : ''}
                 </div>
             </div>
-        </div>
-    `;
-});
+        </div>`;
+}

@@ -50,6 +50,7 @@ class EventCreate(BaseModel):
     marketing_budget: Optional[float] = 0.0
     expected_roi: Optional[float] = 0.0
     notes: Optional[str] = None
+    venue_map_url: Optional[str] = None
 
 
 class EventUpdate(BaseModel):
@@ -72,6 +73,7 @@ class EventUpdate(BaseModel):
     marketing_budget: Optional[float] = None
     expected_roi: Optional[float] = None
     notes: Optional[str] = None
+    venue_map_url: Optional[str] = None
 
 
 class EventResponse(BaseModel):
@@ -95,6 +97,7 @@ class EventResponse(BaseModel):
     marketing_budget: float
     expected_roi: float
     notes: Optional[str] = None
+    venue_map_url: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -139,6 +142,7 @@ class VendorResponse(BaseModel):
     price_range: Optional[str] = None
     description: Optional[str] = None
     is_active: bool
+    availability: Optional[str] = "Available"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

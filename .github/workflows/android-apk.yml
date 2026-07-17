@@ -1,0 +1,92 @@
+name: Build Android APK
+
+# Builds the EventoPro Android APK in the cloud (no local Android Studio) with
+# Capacitor and publishes it to a fixed "apk-latest" release so the web app can
+# link to a stable URL:
+#   https://github.com/<OWNER>/<REPO>/releases/download/apk-latest/eventpro.apk
+#
+# The APK loads the LIVE deployed site (server.url in capacitor.config.json), so
+# UI/backend updates reflect automatically in installed apps — no reinstall.
+# Rebuild only when the icon, name, permissions, or server URL change.
+#
+# Run: Actions tab → "Build Android APK" → Run workflow  (or push a tag like v1.0.0)
+
+on:
+  workflow_dispatch:        # manual run from the Actions tab
+  push:
+    branches:
+      - main                # rebuild the APK on every push to main
+    tags:
+      - 'v*'                # ...and on version tags (v1.0.0)
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Capacitor
+        run: npm install
+
+      - name: Prepare web assets (static shell for the wrapper)
+        run: |
+          mkdir -p www
+          cp index.html www/ 2>/dev/null || true
+          cp manifest.json icon.svg sw.js www/ 2>/dev/null || true
+          cp -r css js www/ 2>/dev/null || true
+
+      - name: Add Android platform
+        run: npx --no-install cap add android
+
+      - name: Enable camera permission (QR ticket scanning)
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          grep -q "android.permission.CAMERA" "$MANIFEST" || \
+            sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>#' "$MANIFEST"
+
+      - name: Sync web assets into Android project
+        run: npx --no-install cap sync android
+
+      - name: Build debug APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk eventpro.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eventpro-apk
+          path: frontend/eventpro.apk
+
+      - name: Publish APK to release (apk-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: EventoPro — Android APK (latest)
+          body: |
+            Latest Android build of EventoPro.
+            Download `eventpro.apk` below and install it on your phone
+            (allow "install from this source" when prompted).
+          files: frontend/eventpro.apk

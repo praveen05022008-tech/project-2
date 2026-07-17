@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event · EventoPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <script>
+        /* Reveal Material Icons only once the icon font is loaded (see style.css
+           FOUC guard) — otherwise ligature keywords would flash or stay hidden. */
+        (function () {
+            var reveal = function () { document.documentElement.classList.add('icons-ready'); };
+            if (document.fonts && document.fonts.load) {
+                Promise.race([
+                    document.fonts.load('1em "Material Icons Round"'),
+                    new Promise(function (r) { setTimeout(r, 2500); })
+                ]).then(reveal).catch(reveal);
+            } else { reveal(); }
+        })();
+    </script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body { overflow: auto; }
+        .pub-wrap { max-width: 720px; margin: 0 auto; padding: 32px 18px 60px; position: relative; z-index: 1; }
+        .pub-brand { display:flex; align-items:center; gap:10px; margin-bottom:24px; }
+        .pub-hero { font-size: 2rem; font-weight: 800; color: var(--text-primary); margin: 6px 0; }
+        .pub-meta { color: var(--text-secondary); display:flex; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+        .tier { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px; border:1px solid var(--border-color); border-radius:12px; margin-bottom:10px; cursor:pointer; }
+        .tier.sel { border-color: var(--accent-primary); box-shadow: var(--shadow-glow); }
+    </style>
+</head>
+<body>
+    <div class="light-trails" aria-hidden="true">
+        <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="ltA" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#1A5FFF" stop-opacity="0"/>
+                    <stop offset="0.5" stop-color="#1A5FFF" stop-opacity="0.55"/>
+                    <stop offset="1" stop-color="#E4007C" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="ltB" x1="1" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#E4007C" stop-opacity="0"/>
+                    <stop offset="0.5" stop-color="#FF2D95" stop-opacity="0.5"/>
+                    <stop offset="1" stop-color="#1A5FFF" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+            <path d="M-120,210 C 320,90 620,360 900,230 S 1480,90 1600,300" fill="none" stroke="url(#ltA)" stroke-width="1.5"/>
+            <path d="M-120,520 C 360,410 720,650 1060,500 S 1500,410 1600,570" fill="none" stroke="url(#ltB)" stroke-width="1.2"/>
+            <path d="M-120,730 C 420,660 760,860 1100,720 S 1520,650 1600,780" fill="none" stroke="url(#ltA)" stroke-width="1"/>
+        </svg>
+    </div>
+
+    <div class="pub-wrap" id="root">
+        <div class="loading-state"><div class="spinner"></div></div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        const API = location.origin + '/api/public';
+        const eventId = parseInt(location.pathname.split('/').filter(Boolean).pop());
+        let tiers = [], selectedTier = null, cfg = { provider: 'simulated' };
+
+        function toast(msg, type='success') {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast toast-' + type;
+            t.innerHTML = `<span class="material-icons-round">${type==='error'?'error':'check_circle'}</span><span class="toast-text">${msg}</span>`;
+            c.appendChild(t); setTimeout(()=>t.remove(), 3500);
+        }
+        const inr = n => '₹' + Math.round(n||0).toLocaleString('en-IN');
+        const fmtDate = s => s ? new Date(s).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '';
+
+        async function load() {
+            try {
+                const [detail, pc] = await Promise.all([
+                    fetch(`${API}/events/${eventId}`).then(r=>{ if(!r.ok) throw new Error('Event not found'); return r.json(); }),
+                    fetch(`${API}/payment-config`).then(r=>r.json()).catch(()=>({provider:'simulated'})),
+                ]);
+                cfg = pc; tiers = detail.ticket_types || [];
+                render(detail.event);
+            } catch (e) {
+                document.getElementById('root').innerHTML = `<div class="card"><div class="card-body">This event isn't available.</div></div>`;
+            }
+        }
+
+        function render(ev) {
+            selectedTier = tiers[0] || null;
+            const tiersHtml = tiers.length ? tiers.map((t,i)=>`
+                <div class="tier ${i===0?'sel':''}" data-id="${t.id}" onclick="selectTier(${t.id})">
+                    <div><strong style="color:var(--text-primary)">${t.name}</strong>
+                    <div style="font-size:.82rem;color:var(--text-muted)">${t.description||''} ${t.remaining!==null?`· ${t.remaining} left`:''}</div></div>
+                    <strong>${inr(t.price)}</strong>
+                </div>`).join('') : '<p class="text-muted">Tickets are not on sale yet.</p>';
+
+            document.getElementById('root').innerHTML = `
+                <div class="pub-brand">
+                    <img src="/logo.png" alt="EventoPro" style="height:30px;width:auto;max-width:110px;object-fit:contain;">
+                    <strong style="color:var(--text-primary)">EventoPro</strong>
+                </div>
+                <span class="badge badge-upcoming">${ev.event_type}</span>
+                <div class="pub-hero">${ev.title}</div>
+                <div class="pub-meta">
+                    <span><span class="material-icons-round" style="font-size:16px;vertical-align:middle">event</span> ${fmtDate(ev.event_date)}</span>
+                    <span><span class="material-icons-round" style="font-size:16px;vertical-align:middle">place</span> ${ev.venue||'Venue TBA'}</span>
+                    ${ev.start_time?`<span><span class="material-icons-round" style="font-size:16px;vertical-align:middle">schedule</span> ${ev.start_time}</span>`:''}
+                </div>
+                <p style="color:var(--text-secondary);margin-bottom:24px;">${ev.description||''}</p>
+
+                <div class="card"><div class="card-header"><h3>Register / Get Tickets</h3></div>
+                <div class="card-body">
+                    ${tiersHtml}
+                    ${tiers.length?`
+                    <div class="form-grid" style="margin-top:14px;">
+                        <div class="form-group"><label>Your name</label><input id="p-name" class="form-input" required></div>
+                        <div class="form-group"><label>Email</label><input id="p-email" type="email" class="form-input" required></div>
+                        <div class="form-group"><label>Quantity</label><input id="p-qty" type="number" class="form-input" value="1" min="1" max="20"></div>
+                        <div class="form-group" style="align-self:end;">
+                            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="checkout()"><span class="material-icons-round">lock</span> <span id="p-btn">Get Tickets</span></button>
+                        </div>
+                    </div>
+                    <p style="font-size:.78rem;color:var(--text-muted);margin-top:8px;">${cfg.provider==='razorpay'?'Secure payment via Razorpay.':'Demo checkout — no real charge.'}</p>`:''}
+                </div></div>`;
+            updateBtn();
+        }
+
+        function selectTier(id) {
+            selectedTier = tiers.find(t=>t.id===id);
+            document.querySelectorAll('.tier').forEach(el=>el.classList.toggle('sel', parseInt(el.dataset.id)===id));
+            updateBtn();
+        }
+        function updateBtn() {
+            const qty = Math.max(1, parseInt((document.getElementById('p-qty')||{}).value)||1);
+            const btn = document.getElementById('p-btn');
+            if (btn && selectedTier) btn.textContent = `Pay ${inr(selectedTier.price*qty)}`;
+        }
+        document.addEventListener('input', e=>{ if(e.target.id==='p-qty') updateBtn(); });
+
+        async function checkout() {
+            const name = (document.getElementById('p-name').value||'').trim();
+            const email = (document.getElementById('p-email').value||'').trim();
+            const qty = Math.max(1, parseInt(document.getElementById('p-qty').value)||1);
+            if (!name || !email) { toast('Enter your name and email', 'error'); return; }
+            try {
+                const order = await fetch(`${API}/orders`, {method:'POST',headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ticket_type_id:selectedTier.id, quantity:qty, buyer_name:name, buyer_email:email})})
+                    .then(async r=>{ const j=await r.json(); if(!r.ok) throw new Error(j.detail||'Order failed'); return j; });
+                const pay = order.payment;
+                if (pay.provider==='razorpay' && pay.gateway_order_id && window.Razorpay) {
+                    new Razorpay({ key:pay.key_id, amount:pay.amount, currency:pay.currency, name:'EventoPro',
+                        order_id:pay.gateway_order_id, prefill:{name, email}, theme:{color:'#667eea'},
+                        handler: async (resp)=>{ await finalize(`${API}/orders/${order.order_id}/verify`, {
+                            razorpay_payment_id:resp.razorpay_payment_id, razorpay_order_id:resp.razorpay_order_id, razorpay_signature:resp.razorpay_signature }); }
+                    }).open();
+                } else {
+                    await finalize(`${API}/orders/${order.order_id}/pay`, {});
+                }
+            } catch (e) { toast(e.message||'Checkout failed','error'); }
+        }
+
+        async function finalize(url, body) {
+            try {
+                const paid = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+                    .then(async r=>{ const j=await r.json(); if(!r.ok) throw new Error(j.detail||'Payment failed'); return j; });
+                document.getElementById('root').innerHTML = `
+                    <div class="card" style="text-align:center;"><div class="card-body">
+                        <span class="material-icons-round" style="font-size:60px;color:#43e97b;">check_circle</span>
+                        <h2 style="margin:12px 0;color:var(--text-primary)">You're registered!</h2>
+                        <p class="text-muted">${paid.tickets.length} ticket(s) confirmed.</p>
+                        <p style="margin-top:10px;">Your ticket code: <code style="color:var(--accent-tertiary)">${paid.tickets[0]}</code></p>
+                        <p style="font-size:.8rem;color:var(--text-muted);margin-top:8px;">Save this code — show it at the entrance.</p>
+                    </div></div>`;
+                toast('Payment successful!');
+            } catch (e) { toast(e.message||'Payment failed','error'); }
+        }
+
+        load();
+    </script>
+</body>
+</html>

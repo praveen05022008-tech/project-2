@@ -1,11 +1,17 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — Events Page (Full CRUD)
+   EventoPro — Events Page (Full CRUD)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 registerPage('events', initEvents);
 
 const eventTypes = ['Wedding', 'Corporate', 'Birthday', 'Concert', 'Conference', 'Exhibition', 'Seminar', 'Other'];
 const eventStatuses = ['Upcoming', 'In Progress', 'Completed', 'Cancelled'];
+
+// Only these roles may create/edit/delete events (matches the backend rules).
+// Attendees, Vendors and Sponsors get a read-only view.
+function canManageEvents() {
+    return ['SUPER_ADMIN', 'ORGANIZER', 'STAFF'].includes(window.currentUser && window.currentUser.role);
+}
 
 async function initEvents() {
     const container = document.getElementById('page-container');
@@ -25,10 +31,14 @@ async function initEvents() {
             </select>
             <input type="date" class="filter-select" id="event-filter-date" title="Filter by date" style="padding-right: 14px;">
             <div class="toolbar-spacer"></div>
+            <button class="btn btn-secondary" onclick="exportEventsCSV()">
+                <span class="material-icons-round">download</span> Export
+            </button>
+            ${canManageEvents() ? `
             <button class="btn btn-primary" id="btn-add-event">
                 <span class="material-icons-round">add</span>
                 New Event
-            </button>
+            </button>` : ''}
         </div>
         <div class="card fade-in stagger-2">
             <div class="card-body" id="events-table-body">
@@ -38,13 +48,74 @@ async function initEvents() {
     `;
 
     // Bind events
-    document.getElementById('btn-add-event').addEventListener('click', () => openEventForm());
+    const addBtn = document.getElementById('btn-add-event');
+    if (addBtn) addBtn.addEventListener('click', () => openEventForm());
     document.getElementById('event-search').addEventListener('input', debounce(loadEvents, 400));
     document.getElementById('event-filter-status').addEventListener('change', loadEvents);
     document.getElementById('event-filter-type').addEventListener('change', loadEvents);
     document.getElementById('event-filter-date').addEventListener('change', loadEvents);
 
     await loadEvents();
+}
+
+// Generate + download a standards-based iCalendar (.ics) file for an event,
+// importable into Google / Outlook / Apple Calendar.
+async function addToCalendar(eventId) {
+    try {
+        const e = await api.get(`/events/${eventId}`);
+        const pad = n => String(n).padStart(2, '0');
+        const dt = (dateStr, timeStr) => {
+            const d = dateStr.replace(/-/g, '');
+            if (!timeStr) return { value: d, allDay: true };
+            return { value: d + 'T' + timeStr.replace(':', '') + '00', allDay: false };
+        };
+        const start = dt(e.event_date, e.start_time);
+        const end = e.end_time ? dt(e.event_date, e.end_time) : null;
+        const esc = s => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+        const startLine = start.allDay ? `DTSTART;VALUE=DATE:${start.value}` : `DTSTART:${start.value}`;
+        const endLine = end ? (end.allDay ? `DTEND;VALUE=DATE:${end.value}` : `DTEND:${end.value}`) : '';
+        const ics = [
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//EventoPro//EN', 'CALSCALE:GREGORIAN',
+            'BEGIN:VEVENT',
+            `UID:event-${e.id}@eventpro`,
+            startLine, endLine,
+            `SUMMARY:${esc(e.title)}`,
+            `LOCATION:${esc(e.venue)}`,
+            `DESCRIPTION:${esc(e.description || (e.event_type + ' event'))}`,
+            'END:VEVENT', 'END:VCALENDAR',
+        ].filter(Boolean).join('\r\n');
+        const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${e.title.replace(/[^a-z0-9]+/gi, '_')}.ics`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Calendar file downloaded', 'success');
+    } catch (err) { showToast('Failed to create calendar file', 'error'); }
+}
+
+// Copy the shareable public event page link (served by the backend at /e/{id}).
+function sharePublicLink(eventId) {
+    const base = (typeof BACKEND_URL !== 'undefined' && BACKEND_URL) ? BACKEND_URL.replace(/\/+$/, '') : window.location.origin;
+    const url = `${base}/e/${eventId}`;
+    const done = () => openModal('Share Event', `
+        <p style="color:var(--text-secondary);margin-bottom:10px;">Public registration link (no login needed):</p>
+        <input class="form-input" value="${url}" readonly onclick="this.select()" style="margin-bottom:12px;">
+        <a href="${url}" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;justify-content:center;">
+            <span class="material-icons-round">open_in_new</span> Open public page</a>`);
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => { showToast('Public link copied', 'success'); done(); }).catch(done);
+    } else { done(); }
+}
+
+async function exportEventsCSV() {
+    try {
+        const events = await api.get('/events?limit=500');
+        exportCSV('events.csv',
+            ['ID', 'Title', 'Client', 'Type', 'Status', 'Date', 'Venue', 'Budget', 'Expected Attendance'],
+            events.map(e => [e.id, e.title, e.client_name, e.event_type, e.status, e.event_date, e.venue, e.budget, e.expected_attendance]));
+    } catch (err) { showToast('Export failed', 'error'); }
 }
 
 async function loadEvents() {
@@ -120,12 +191,30 @@ function renderEventsTable(events) {
                                     <button class="action-btn action-btn-view" title="View Details" onclick="viewEventDetails(${e.id})">
                                         <span class="material-icons-round">visibility</span>
                                     </button>
+                                    ${!canManageEvents() ? `
+                                    <button class="action-btn action-btn-view" title="Get Tickets" onclick="openTicketPurchase(${e.id}, '${e.title.replace(/'/g, "\\'")}')">
+                                        <span class="material-icons-round">confirmation_number</span>
+                                    </button>
+                                    <button class="action-btn action-btn-view" title="Rate this event" onclick="openFeedbackForm(${e.id}, '${e.title.replace(/'/g, "\\'")}')">
+                                        <span class="material-icons-round">rate_review</span>
+                                    </button>` : ''}
+                                    ${canManageEvents() ? `
+                                    <button class="action-btn action-btn-view" title="Manage Tickets" onclick="openTicketManage(${e.id}, '${e.title.replace(/'/g, "\\'")}')">
+                                        <span class="material-icons-round">local_activity</span>
+                                    </button>
+                                    <button class="action-btn action-btn-view" title="Share public link" onclick="sharePublicLink(${e.id})">
+                                        <span class="material-icons-round">share</span>
+                                    </button>
+                                    <button class="action-btn action-btn-view" title="Attendees" onclick="openAttendeeList(${e.id}, '${e.title.replace(/'/g, "\\'")}')">
+                                        <span class="material-icons-round">groups</span>
+                                    </button>` : ''}
+                                    ${canManageEvents() ? `
                                     <button class="action-btn action-btn-edit" title="Edit" onclick="openEventForm(${e.id})">
                                         <span class="material-icons-round">edit</span>
                                     </button>
                                     <button class="action-btn action-btn-delete" title="Delete" onclick="confirmDeleteEvent(${e.id}, '${e.title.replace(/'/g, "\\'")}')">
                                         <span class="material-icons-round">delete</span>
-                                    </button>
+                                    </button>` : ''}
                                 </div>
                             </td>
                         </tr>
@@ -202,6 +291,10 @@ function openEventForm(eventId = null) {
                 <label for="ef-notes">Notes</label>
                 <textarea id="ef-notes" class="form-textarea" placeholder="Additional notes..."></textarea>
             </div>
+            <div class="form-group full-width">
+                <label for="ef-venuemap">Venue Map URL (shown to attendees as a QR)</label>
+                <input type="url" id="ef-venuemap" class="form-input" placeholder="https://maps.google.com/...">
+            </div>
             <div class="form-group full-width" style="margin-top:8px">
                 <div class="modal-footer" style="padding:0;border:none;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -233,6 +326,7 @@ function openEventForm(eventId = null) {
             document.getElementById('ef-attendees').value = event.attendees_count || '';
             document.getElementById('ef-desc').value = event.description || '';
             document.getElementById('ef-notes').value = event.notes || '';
+            document.getElementById('ef-venuemap').value = event.venue_map_url || '';
         }).catch(() => showToast('Failed to load event data', 'error'));
     }
 
@@ -254,6 +348,7 @@ function openEventForm(eventId = null) {
             attendees_count: parseInt(document.getElementById('ef-attendees').value) || 0,
             description: document.getElementById('ef-desc').value.trim() || null,
             notes: document.getElementById('ef-notes').value.trim() || null,
+            venue_map_url: document.getElementById('ef-venuemap').value.trim() || null,
         };
 
         if (!data.title || !data.client_name || !data.event_date) {
@@ -302,6 +397,11 @@ async function viewEventDetails(eventId) {
         } catch (e) { /* no vendors */ }
 
         const detailsHtml = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+                <button class="btn btn-secondary btn-sm" onclick="addToCalendar(${event.id})">
+                    <span class="material-icons-round">event_available</span> Add to Calendar
+                </button>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                 <div class="form-group">
                     <label>Event Type</label>

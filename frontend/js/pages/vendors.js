@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — Vendors Page (Full CRUD)
+   EventoPro — Vendors Page (Full CRUD)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 registerPage('vendors', initVendors);
@@ -24,6 +24,8 @@ async function initVendors() {
                 <option value="false">Inactive</option>
             </select>
             <div class="toolbar-spacer"></div>
+            <button class="btn btn-secondary" onclick="openVendorSuggestions()"><span class="material-icons-round">star</span> Top Vendors</button>
+            <button class="btn btn-secondary" onclick="openSponsorList()"><span class="material-icons-round">handshake</span> Sponsors</button>
             <button class="btn btn-primary" id="btn-add-vendor">
                 <span class="material-icons-round">add</span>
                 Add Vendor
@@ -128,11 +130,15 @@ function renderVendorCards(vendors) {
                     </div>
                     ${renderStars(v.rating)}
                     <div class="ai-alert-card" style="margin-top: 10px; padding: 10px;">
-                        <strong>AI Performance Score: <span style="color:#4facfe">${Math.floor(v.rating * 18 + 5)}/100</span></strong>
+                        <strong>AI Performance Score: <span style="color:#1A5FFF">${Math.floor(v.rating * 18 + 5)}/100</span></strong>
                         <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Based on past deliveries and budget adherence</p>
                     </div>
                     ${v.description ? `<p style="font-size:0.8rem;color:var(--text-muted);margin-top:10px;line-height:1.5">${v.description.substring(0, 100)}${v.description.length > 100 ? '...' : ''}</p>` : ''}
                     <div class="vendor-card-actions">
+                        ${(v.is_active || v.availability === 'Available') ? `
+                        <button class="btn btn-primary btn-sm vendor-register-btn" onclick="openVendorRegister(${v.id}, '${v.name.replace(/'/g, "\\'")}')">
+                            <span class="material-icons-round">event_available</span> Register
+                        </button>` : ''}
                         <button class="action-btn action-btn-edit" title="Edit" onclick="openVendorForm(${v.id})">
                             <span class="material-icons-round">edit</span>
                         </button>
@@ -282,4 +288,59 @@ async function deleteVendor(id) {
     } catch (err) {
         showToast(err.message || 'Failed to delete vendor', 'error');
     }
+}
+
+// Register (book) an active/available vendor onto one of the organiser's events.
+async function openVendorRegister(vendorId, name) {
+    let events = [];
+    try { events = await api.get('/my-events'); } catch (_) {}
+    const opts = events.map(e => `<option value="${e.id}">${e.title} — ${formatDate(e.event_date)}</option>`).join('');
+    openModal('Register Vendor · ' + name, `
+        <form id="vr-form" class="form-grid">
+            <div class="form-group full-width">
+                <label>Event</label>
+                <select id="vr-event" class="form-select">${opts || '<option value="">— No events —</option>'}</select>
+            </div>
+            <div class="form-group">
+                <label>Role / Service</label>
+                <input id="vr-role" class="form-input" placeholder="e.g. Main Caterer">
+            </div>
+            <div class="form-group">
+                <label>Agreed Price (₹)</label>
+                <input id="vr-price" type="number" class="form-input" min="0" value="0">
+            </div>
+            <div class="form-group full-width">
+                <label>Status</label>
+                <select id="vr-status" class="form-select">
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Pending">Pending</option>
+                </select>
+            </div>
+            <div class="form-group full-width"><div class="modal-footer" style="padding:0;border:none;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary"><span class="material-icons-round">event_available</span> Register</button>
+            </div></div>
+        </form>`);
+    document.getElementById('vr-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const eid = parseInt(document.getElementById('vr-event').value);
+        if (!eid) { showToast('Please select an event to register this vendor for.', 'error'); return; }
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        try {
+            await api.post(`/events/${eid}/vendors`, {
+                event_id: eid,                       // backend requires event_id in the body too
+                vendor_id: vendorId,
+                role: document.getElementById('vr-role').value.trim() || null,
+                agreed_price: parseFloat(document.getElementById('vr-price').value) || 0,
+                status: document.getElementById('vr-status').value,
+            });
+            showToast(`${name} registered for the event`, 'success');
+            closeModal();
+            if (typeof loadVendors === 'function') loadVendors();   // refresh the list
+        } catch (err) {
+            if (btn) btn.disabled = false;
+            showToast(err.message || 'Failed to register vendor', 'error');
+        }
+    });
 }

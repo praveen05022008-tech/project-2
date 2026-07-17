@@ -1,47 +1,54 @@
-registerPage('dashboard-staff', () => {
-    const container = document.getElementById('page-container');
-    container.innerHTML = `
-        <div class="dashboard-header animate-fade-in stagger-1" style="margin-bottom: 24px;">
-            <h3 style="font-size: 1.6rem; color: var(--text-primary);">Staff Command View</h3>
-            <p style="color: var(--text-muted);">Live operations and task assignments.</p>
-        </div>
-        
-        <div class="stats-grid animate-fade-in stagger-2">
-            <div class="stat-card card-glow">
-                <div class="stat-card-header">
-                    <span class="stat-label">Active Tasks</span>
-                    <div class="stat-card-icon"><span class="material-icons-round">assignment</span></div>
+// Staff dashboard — live metrics + my attendance (QR check-in).
+registerPage('dashboard-staff', async () => {
+    const c = document.getElementById('page-container');
+    c.innerHTML = `<div class="loading-state"><div class="spinner"></div></div>`;
+    try {
+        const data = await api.get('/dashboard/role-view');
+        c.innerHTML = renderRoleDashboard(data) + `
+            <div class="card card-glow" style="margin-top:20px;">
+                <div class="card-header">
+                    <h3><span class="material-icons-round" style="vertical-align:middle;">how_to_reg</span> My Attendance</h3>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" onclick="openParticipantScan()"><span class="material-icons-round">qr_code_2</span> Scan Vendor/Organiser</button>
+                        <button class="btn btn-primary btn-sm" onclick="openAttendanceScan()"><span class="material-icons-round">qr_code_scanner</span> Check In</button>
+                    </div>
                 </div>
-                <div class="stat-value">12</div>
-                <div style="font-size: 0.8rem; margin-top: 8px; color: #f5a623;">
-                    3 tasks high priority
-                </div>
-            </div>
-            
-            <div class="stat-card card-glow">
-                <div class="stat-card-header">
-                    <span class="stat-label">Zone Capacity</span>
-                    <div class="stat-card-icon"><span class="material-icons-round">groups</span></div>
-                </div>
-                <div class="stat-value">85%</div>
-                <div style="font-size: 0.8rem; margin-top: 8px; color: var(--text-muted);">
-                    Main hall near capacity.
-                </div>
-            </div>
-        </div>
-
-        <div class="card card-glow animate-fade-in stagger-3 pulse-alert" style="margin-top: 20px;">
-            <div class="card-header" style="border: none; padding-bottom: 0;">
-                <h3 style="display: flex; align-items: center; gap: 8px;">
-                    <span class="material-icons-round" style="color: #f5576c;">warning</span>
-                    Crowd Density Alert
-                </h3>
-            </div>
-            <div class="card-body">
-                <p style="color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">AI detected severe crowding at Gate A (98% capacity).</p>
-                <p style="color: var(--text-secondary); margin-bottom: 16px;">Please redirect new arrivals to Gate B immediately to prevent bottlenecks.</p>
-                <button class="btn btn-danger btn-sm">Acknowledge & Redirect</button>
-            </div>
-        </div>
-    `;
+                <div class="card-body" id="staff-att-list"><div class="loading-state"><div class="spinner"></div></div></div>
+            </div>`;
+        loadStaffAttendance();
+    } catch (err) {
+        console.error(err);
+        c.innerHTML = `<div class="card"><div class="card-body text-danger">Failed to load dashboard.</div></div>`;
+    }
 });
+
+async function loadStaffAttendance() {
+    const el = document.getElementById('staff-att-list');
+    if (!el) return;
+    try {
+        const events = await api.get('/my-events');
+        if (!events.length) { el.innerHTML = '<p class="text-muted">You are not assigned to any events yet.</p>'; return; }
+        const rows = await Promise.all(events.map(async (e) => {
+            let mine = 'Pending';
+            try {
+                const d = await api.get(`/attendance/${e.id}`);
+                const r = d.staff.find(s => s.staff_email === window.currentUser.email);
+                if (r) mine = r.attendance;
+            } catch (_) { /* ignore */ }
+            return { e, mine };
+        }));
+        el.innerHTML = `
+            <p class="text-muted" style="margin-bottom:10px;font-size:0.85rem;">Tap <strong>Check In</strong> and scan the event's attendance QR shown by your organizer.</p>
+            <div class="table-wrapper"><table class="data-table">
+                <thead><tr><th>Event</th><th>Date</th><th>Venue</th><th>My Status</th></tr></thead>
+                <tbody>${rows.map(({ e, mine }) => `<tr>
+                    <td style="color:var(--text-primary);font-weight:600;">${e.title}</td>
+                    <td>${formatDate(e.event_date)}</td>
+                    <td>${e.venue || '—'}</td>
+                    <td>${attBadge(mine)}</td>
+                </tr>`).join('')}</tbody>
+            </table></div>`;
+    } catch (err) {
+        el.innerHTML = `<p class="text-muted">Could not load your attendance.</p>`;
+    }
+}

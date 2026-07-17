@@ -3,45 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EventPro - Professional Event Management Platform. Manage events, vendors, and clients with AI-powered assistance.">
-    <title>EventPro | Event Management Platform</title>
+    <meta name="description" content="EventoPro - Professional Event Management Platform. Manage events, vendors, and clients with AI-powered assistance.">
+    <title>EventoPro | Event Management Platform</title>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EventoPro">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="icon" type="image/png" href="/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <script>
+        /* Reveal Material Icons only once the icon font is actually loaded, so we
+           never flash the raw ligature keywords ("celebration", "store", …). A
+           timeout falls back to revealing regardless, so a slow/blocked font shows
+           text rather than nothing. */
+        (function () {
+            var reveal = function () { document.documentElement.classList.add('icons-ready'); };
+            if (document.fonts && document.fonts.load) {
+                Promise.race([
+                    document.fonts.load('1em "Material Icons Round"'),
+                    new Promise(function (r) { setTimeout(r, 2500); })
+                ]).then(reveal).catch(reveal);
+            } else {
+                reveal();
+            }
+        })();
+    </script>
 </head>
 <body>
+<<<<<<< HEAD
     <script>
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-theme');
         }
     </script>
+=======
+    <!-- Ambient glowing light trails (behind the whole UI) -->
+    <div class="light-trails" aria-hidden="true">
+        <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="ltA" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#1A5FFF" stop-opacity="0"/>
+                    <stop offset="0.5" stop-color="#1A5FFF" stop-opacity="0.55"/>
+                    <stop offset="1" stop-color="#E4007C" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="ltB" x1="1" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#E4007C" stop-opacity="0"/>
+                    <stop offset="0.5" stop-color="#FF2D95" stop-opacity="0.5"/>
+                    <stop offset="1" stop-color="#1A5FFF" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+            <path d="M-120,210 C 320,90 620,360 900,230 S 1480,90 1600,300" fill="none" stroke="url(#ltA)" stroke-width="1.5"/>
+            <path d="M-120,520 C 360,410 720,650 1060,500 S 1500,410 1600,570" fill="none" stroke="url(#ltB)" stroke-width="1.2"/>
+            <path d="M-120,730 C 420,660 760,860 1100,720 S 1520,650 1600,780" fill="none" stroke="url(#ltA)" stroke-width="1"/>
+        </svg>
+    </div>
+
+>>>>>>> 3740c80de03df76873152bc5b90eea78d971324d
     <!-- Login Page -->
     <div class="login-container" id="login-page">
         <div class="login-card">
             <div class="login-header">
-                <div class="logo-icon">
-                    <span class="material-icons-round">celebration</span>
-                </div>
-                <h2>Welcome to EventPro</h2>
-                <p>Sign in to manage your events</p>
+                <img src="/logo.png" alt="EventoPro" class="login-logo">
+                <h2>Welcome to EventoPro</h2>
+                <p id="auth-subtitle">The AI-powered event management platform</p>
             </div>
+
+            <div class="login-features">
+                <span><span class="material-icons-round">auto_awesome</span> AI-powered</span>
+                <span><span class="material-icons-round">confirmation_number</span> Ticketing</span>
+                <span><span class="material-icons-round">qr_code_scanner</span> Live check-in</span>
+            </div>
+
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" data-tab="signin">Sign In</button>
+                <button type="button" class="auth-tab" data-tab="signup">Create Account</button>
+            </div>
+
             <form id="login-form">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" class="form-input" placeholder="Enter your ID (e.g., admin)" required>
+                    <label for="username">Email</label>
+                    <input type="email" id="username" class="form-input" autocomplete="username"
+                           placeholder="you@eventpro.com" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                    <div class="password-field">
+                        <input type="password" id="password" class="form-input" autocomplete="current-password"
+                               placeholder="Enter your password" required>
+                        <button type="button" class="password-toggle" id="password-toggle" title="Show password" aria-label="Show password">
+                            <span class="material-icons-round">visibility</span>
+                        </button>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 10px;">
+                <button type="submit" class="btn btn-primary" id="login-submit" style="width: 100%; justify-content: center; margin-top: 10px;">
                     Sign In
                 </button>
             </form>
+
+            <form id="register-form" style="display:none;">
+                <div class="form-group">
+                    <label for="reg-email">Email</label>
+                    <input type="email" id="reg-email" class="form-input" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" class="form-input" placeholder="At least 6 characters" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="reg-role">I am a…</label>
+                    <select id="reg-role" class="form-select">
+                        <option value="ATTENDEE">Attendee</option>
+                        <option value="ORGANIZER">Organizer</option>
+                        <option value="STAFF">Staff</option>
+                        <option value="VENDOR">Vendor</option>
+                        <option value="SPONSOR">Sponsor</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px;">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="login-demo" id="login-demo">
+                <div class="login-demo-title">
+                    <span>Quick demo login</span>
+                </div>
+                <div class="demo-role-grid">
+                    <button class="demo-role" data-email="superadmin@eventpro.com">
+                        <span class="material-icons-round">admin_panel_settings</span> Super Admin
+                    </button>
+                    <button class="demo-role" data-email="organizer@eventpro.com">
+                        <span class="material-icons-round">event_available</span> Organizer
+                    </button>
+                    <button class="demo-role" data-email="staff@eventpro.com">
+                        <span class="material-icons-round">badge</span> Staff
+                    </button>
+                    <button class="demo-role" data-email="vendor@eventpro.com">
+                        <span class="material-icons-round">store</span> Vendor
+                    </button>
+                    <button class="demo-role" data-email="sponsor@eventpro.com">
+                        <span class="material-icons-round">campaign</span> Sponsor
+                    </button>
+                    <button class="demo-role" data-email="attendee@eventpro.com">
+                        <span class="material-icons-round">person</span> Attendee
+                    </button>
+                </div>
+            </div>
+
             <div class="login-footer">
-                <p>Default ID: <strong>admin</strong> | Password: <strong>admin123</strong></p>
+                <p>Demo password for all roles: <strong>password123</strong></p>
+                <a id="download-apk" href="#" target="_blank" rel="noopener" class="btn btn-secondary" style="display:none;width:100%;justify-content:center;margin-top:14px;">
+                    <span class="material-icons-round">android</span> Get the Android App
+                </a>
             </div>
         </div>
     </div>
@@ -51,11 +172,9 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <div class="logo-icon">
-                        <span class="material-icons-round">celebration</span>
-                    </div>
+                    <img src="/logo.png" alt="EventoPro" class="logo-img">
                     <div class="logo-text">
-                        <h1>EventPro</h1>
+                        <h1>EventoPro</h1>
                         <span class="logo-subtitle">Management</span>
                     </div>
                 </div>
@@ -100,15 +219,45 @@
                         </a>
                     </li>
                     <li>
+                        <a href="#event-qa" class="nav-link" data-page="event-qa" id="nav-event-qa">
+                            <span class="material-icons-round">question_answer</span>
+                            <span class="nav-text">AI Q&amp;A</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="#vendors" class="nav-link" data-page="vendors" id="nav-vendors">
                             <span class="material-icons-round">store</span>
                             <span class="nav-text">Vendors</span>
                         </a>
                     </li>
                     <li>
+                        <a href="#my-vendors" class="nav-link" data-page="my-vendors" id="nav-my-vendors">
+                            <span class="material-icons-round">storefront</span>
+                            <span class="nav-text">My Vendors</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="#ai-center" class="nav-link" data-page="ai-center" id="nav-ai-center">
                             <span class="material-icons-round">smart_toy</span>
                             <span class="nav-text">AI Center</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#copilot" class="nav-link" data-page="copilot" id="nav-copilot">
+                            <span class="material-icons-round">auto_awesome</span>
+                            <span class="nav-text">Copilot</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#users" class="nav-link" data-page="users" id="nav-users">
+                            <span class="material-icons-round">manage_accounts</span>
+                            <span class="nav-text">Users</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#audit-logs" class="nav-link" data-page="audit-logs" id="nav-audit-logs">
+                            <span class="material-icons-round">fact_check</span>
+                            <span class="nav-text">Audit Logs</span>
                         </a>
                     </li>
                     <li>
@@ -121,6 +270,10 @@
             </nav>
 
             <div class="sidebar-footer">
+                <a id="sidebar-apk" href="#" target="_blank" rel="noopener" class="sidebar-apk-link" style="display:none;">
+                    <span class="material-icons-round">android</span>
+                    <span class="nav-text">Get the Android App</span>
+                </a>
                 <div class="user-profile">
                     <div class="user-avatar">
                         <span class="material-icons-round">person</span>
@@ -136,6 +289,9 @@
             </div>
         </aside>
 
+        <!-- Backdrop shown behind the sidebar on mobile -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
         <!-- Main Content Area -->
         <main class="main-content" id="main-content">
             <!-- Top Bar -->
@@ -148,6 +304,13 @@
                     <span class="topbar-date" id="topbar-date"></span>
                 </div>
                 <div class="topbar-actions">
+                    <div class="notif-wrap">
+                        <button class="btn-icon" id="notif-btn" title="Notifications">
+                            <span class="material-icons-round">notifications</span>
+                            <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+                        </button>
+                        <div class="notif-dropdown" id="notif-dropdown"></div>
+                    </div>
                     <button class="btn-icon" id="refresh-btn" title="Refresh">
                         <span class="material-icons-round">refresh</span>
                     </button>
@@ -180,7 +343,21 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Scripts -->
+    <script src="js/lib/qrcode.min.js"></script>
+    <script src="js/lib/jsqr.min.js"></script>
+    <!-- Razorpay checkout (used only when a real gateway is configured) -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!-- PDF export (report download) -->
+    <script src="js/lib/html2canvas.min.js"></script>
+    <script src="js/lib/jspdf.umd.min.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/pages/directory.js"></script>
+    <script src="js/pages/event-qa.js"></script>
+    <script src="js/pages/my-vendors.js"></script>
+    <script src="js/pages/checkin.js"></script>
+    <script src="js/pages/attendance.js"></script>
+    <script src="js/pages/engage.js"></script>
+    <script src="js/pages/commerce.js"></script>
     <script src="js/pages/dashboard.js"></script>
     <script src="js/pages/dashboard-staff.js"></script>
     <script src="js/pages/dashboard-vendor.js"></script>
@@ -195,5 +372,8 @@
     <script src="js/pages/budget.js"></script>
     <script src="js/pages/analytics.js"></script>
     <script src="js/pages/reports.js"></script>
+    <script src="js/pages/audit.js"></script>
+    <script src="js/pages/users.js"></script>
+    <script src="js/pages/copilot.js"></script>
 </body>
 </html>

@@ -1,0 +1,10 @@
+{
+  "appId": "com.eventpro.app",
+  "appName": "EventoPro",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "url": "https://event-management-frontend-dv9w.onrender.com",
+    "cleartext": false
+  }
+}

@@ -17,7 +17,7 @@ api_key = os.getenv("CEREBRAS_API_KEY", "")
 client = Cerebras(api_key=api_key) if api_key else None
 
 # System prompt for the AI assistant
-SYSTEM_PROMPT = """You are EventPro AI Assistant, a helpful and knowledgeable event management consultant. 
+SYSTEM_PROMPT = """You are EventoPro AI Assistant, a helpful and knowledgeable event management consultant. 
 You help clients plan and manage their events professionally. Your expertise includes:
 
 - Wedding planning and coordination
@@ -55,7 +55,9 @@ def get_ai_response(message: str, chat_history: list) -> str:
             )
             return response.choices[0].message.content
         except Exception as e:
-            return f"I apologize, but I'm experiencing a temporary issue. Please try again in a moment. (Error: {str(e)})"
+            # Log the real error server-side; return a generic message to the client.
+            print(f"[AI ERROR] Cerebras chat failed: {e}")
+            return "I apologize, but I'm experiencing a temporary issue. Please try again in a moment."
     else:
         # Intelligent fallback responses when no API key
         return get_fallback_response(message)
@@ -143,7 +145,7 @@ When choosing vendors:
 - Can you provide references?"""
 
     elif any(w in message_lower for w in ["hello", "hi", "hey", "help"]):
-        return """👋 **Welcome to EventPro AI Assistant!**
+        return """👋 **Welcome to EventoPro AI Assistant!**
 
 I'm here to help you plan and manage your events. I can assist with:
 
@@ -158,7 +160,7 @@ I'm here to help you plan and manage your events. I can assist with:
 What type of event are you planning? Tell me more and I'll provide tailored guidance!"""
 
     else:
-        return """Thank you for your question! As your EventPro AI Assistant, I can help with:
+        return """Thank you for your question! As your EventoPro AI Assistant, I can help with:
 
 🎯 **Event Planning**: Weddings, corporate events, birthdays, concerts
 📋 **Vendor Management**: Selection, negotiation, coordination

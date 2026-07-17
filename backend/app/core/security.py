@@ -1,12 +1,26 @@
 import os
+import secrets
+import warnings
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Any
+from typing import Optional
 import bcrypt
-from jose import jwt, JWTError
+from jose import jwt
 from pydantic import BaseModel
 
-# Secret key for JWT signing - in production, this should be a secure random string
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey_eventpro_ai")
+# Secret key for JWT signing. MUST be provided via the SECRET_KEY env var in
+# production. If it is missing we generate a random ephemeral key so the app
+# still boots for local development — but tokens are then invalidated on every
+# restart, and we emit a loud warning instead of shipping a known hard-coded key.
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_urlsafe(48)
+    warnings.warn(
+        "SECRET_KEY environment variable is not set. Using a random ephemeral "
+        "key — all sessions will be invalidated on restart. Set SECRET_KEY in "
+        "production.",
+        RuntimeWarning,
+    )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

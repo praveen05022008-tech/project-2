@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   EventPro — Dashboard Page
+   EventoPro — Dashboard Page
    ═══════════════════════════════════════════════════════════════════════════ */
 
 registerPage('dashboard', initDashboard);
@@ -36,8 +36,12 @@ async function initDashboard() {
 function renderDashboard(data) {
     const container = document.getElementById('page-container');
     const stats = data.stats;
+    const role = (window.currentUser || {}).role;
+    const showSponsors = role === 'ORGANIZER' || role === 'SUPER_ADMIN';
 
     container.innerHTML = `
+      <div class="dash-with-panel">
+        <div class="dash-main">
         <!-- Stat Cards -->
         <div class="stats-grid">
             ${renderStatCards(stats)}
@@ -96,10 +100,14 @@ function renderDashboard(data) {
                 </div>
             </div>
         </div>
+        </div>
+        ${showSponsors ? renderDirectoryPanel('sponsors') : ''}
+      </div>
     `;
 
     // Animate stat values
     animateCounters();
+    if (showSponsors) initDirectoryPanel('sponsors');
 }
 
 function renderStatCards(stats) {
@@ -215,7 +223,17 @@ function renderStatusChart(breakdown, total) {
         'Cancelled': 'cancelled',
     };
 
+    const donutColors = {
+        'Upcoming': '#1A5FFF', 'In Progress': '#FF2D95',
+        'Completed': '#1A5FFF', 'Cancelled': '#E4007C',
+    };
+    const donut = svgDonut(
+        breakdown.map(i => ({ label: i.status, value: i.count, color: donutColors[i.status] || '#1A5FFF' })),
+        'events'
+    );
+
     return `
+        <div style="margin-bottom:18px;">${donut}</div>
         <div class="status-chart">
             ${breakdown.map(item => {
                 const pct = total > 0 ? ((item.count / total) * 100).toFixed(0) : 0;
