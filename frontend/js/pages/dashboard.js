@@ -224,11 +224,11 @@ function renderStatusChart(breakdown, total) {
     };
 
     const donutColors = {
-        'Upcoming': '#667eea', 'In Progress': '#f5a623',
-        'Completed': '#43e97b', 'Cancelled': '#f5576c',
+        'Upcoming': '#1A5FFF', 'In Progress': '#FF2D95',
+        'Completed': '#1A5FFF', 'Cancelled': '#E4007C',
     };
     const donut = svgDonut(
-        breakdown.map(i => ({ label: i.status, value: i.count, color: donutColors[i.status] || '#667eea' })),
+        breakdown.map(i => ({ label: i.status, value: i.count, color: donutColors[i.status] || '#1A5FFF' })),
         'events'
     );
 

@@ -114,15 +114,15 @@ async function generateReport(eventId) {
 function reportCharts(r, o) {
     const inr = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
     const util = r.planned_budget > 0 ? (r.actual_total_cost / r.planned_budget * 100) : 0;
-    const utilColor = util > 100 ? '#f5576c' : (util >= 85 ? '#f5a623' : '#43e97b');
-    const attColor = r.attendance_rate_pct >= 90 ? '#43e97b' : (r.attendance_rate_pct >= 60 ? '#f5a623' : '#f5576c');
+    const utilColor = util > 100 ? '#E4007C' : (util >= 85 ? '#FF2D95' : '#1A5FFF');
+    const attColor = r.attendance_rate_pct >= 90 ? '#1A5FFF' : (r.attendance_rate_pct >= 60 ? '#FF2D95' : '#E4007C');
     const g = { textColor: o.textColor, mutedColor: o.mutedColor, track: o.track };
 
     const budgetG = svgGauge(util, { ...g, color: utilColor, centerText: Math.round(util) + '%', label: 'of budget' });
     const attG = svgGauge(r.attendance_rate_pct, { ...g, color: attColor, label: 'of target' });
     const revenueD = svgDonut([
-        { label: 'Cost', value: r.actual_total_cost, color: '#f5a623' },
-        { label: 'Profit', value: Math.max(0, r.projected_profit), color: '#43e97b' },
+        { label: 'Cost', value: r.actual_total_cost, color: '#FF2D95' },
+        { label: 'Profit', value: Math.max(0, r.projected_profit), color: '#1A5FFF' },
     ], 'Event ROI', { textColor: o.textColor, mutedColor: o.mutedColor, fmt: inr, centerValue: r.event_roi_pct + '%' });
 
     const card = (title, chart, center) => `
@@ -155,9 +155,9 @@ function updateReportUI(report) {
     lastReport = report;
 
     const inr = n => '₹' + Math.round(n || 0).toLocaleString('en-IN');
-    const varColor = report.budget_variance >= 0 ? '#43e97b' : '#f5576c';
-    const successesHtml = report.key_successes.map(s => `<li style="margin-bottom:6px;color:#43e97b;">${s}</li>`).join('') || '<li class="text-muted">—</li>';
-    const improvementsHtml = report.areas_for_improvement.map(i => `<li style="margin-bottom:6px;color:#f5a623;">${i}</li>`).join('') || '<li class="text-muted">None flagged</li>';
+    const varColor = report.budget_variance >= 0 ? '#1A5FFF' : '#E4007C';
+    const successesHtml = report.key_successes.map(s => `<li style="margin-bottom:6px;color:#1A5FFF;">${s}</li>`).join('') || '<li class="text-muted">—</li>';
+    const improvementsHtml = report.areas_for_improvement.map(i => `<li style="margin-bottom:6px;color:#FF2D95;">${i}</li>`).join('') || '<li class="text-muted">None flagged</li>';
 
     const chartsHtml = reportCharts(report, REPORT_CHART_SCREEN);
 
@@ -170,7 +170,7 @@ function updateReportUI(report) {
             <button class="btn btn-primary btn-sm" onclick="downloadReportPDF()"><span class="material-icons-round">picture_as_pdf</span> Download PDF</button>
         </div>
 
-        <div class="ai-alert-card" style="border-left-color:#4facfe;margin-bottom:18px;">
+        <div class="ai-alert-card" style="border-left-color:#1A5FFF;margin-bottom:18px;">
             <strong>Executive Summary</strong>
             <p style="margin-top:8px;color:var(--text-secondary);line-height:1.6;">${report.executive_summary}</p>
         </div>
@@ -234,8 +234,8 @@ async function downloadReportPDF() {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:760px;background:#fff;color:#111;padding:36px;font-family:Inter,Arial,sans-serif;';
     wrap.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #667eea;padding-bottom:14px;margin-bottom:18px;">
-            <div><div style="font-size:22px;font-weight:800;color:#667eea;">EventoPro</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1A5FFF;padding-bottom:14px;margin-bottom:18px;">
+            <div><div style="font-size:22px;font-weight:800;color:#1A5FFF;">EventoPro</div>
                  <div style="font-size:13px;color:#667085;">Post-Event Business Report</div></div>
             <div style="text-align:right;font-size:12px;color:#667085;">${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
         </div>

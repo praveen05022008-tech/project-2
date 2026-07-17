@@ -74,10 +74,10 @@ async function fetchAnalytics(eventId) {
 
 function analyticsHealthColor(h) {
     const s = (h || '').toLowerCase();
-    if (s.includes('low')) return '#f5576c';
-    if (s.includes('moderate')) return '#f5a623';
+    if (s.includes('low')) return '#E4007C';
+    if (s.includes('moderate')) return '#FF2D95';
     if (s.includes('no target')) return 'var(--text-muted)';
-    return '#43e97b';
+    return '#1A5FFF';
 }
 
 function updateAnalyticsUI(a) {

@@ -32,6 +32,26 @@
     </style>
 </head>
 <body>
+    <div class="light-trails" aria-hidden="true">
+        <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="ltA" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#1A5FFF" stop-opacity="0"/>
+                    <stop offset="0.5" stop-color="#1A5FFF" stop-opacity="0.55"/>
+                    <stop offset="1" stop-color="#E4007C" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="ltB" x1="1" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#E4007C" stop-opacity="0"/>
+                    <stop offset="0.5" stop-color="#FF2D95" stop-opacity="0.5"/>
+                    <stop offset="1" stop-color="#1A5FFF" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+            <path d="M-120,210 C 320,90 620,360 900,230 S 1480,90 1600,300" fill="none" stroke="url(#ltA)" stroke-width="1.5"/>
+            <path d="M-120,520 C 360,410 720,650 1060,500 S 1500,410 1600,570" fill="none" stroke="url(#ltB)" stroke-width="1.2"/>
+            <path d="M-120,730 C 420,660 760,860 1100,720 S 1520,650 1600,780" fill="none" stroke="url(#ltA)" stroke-width="1"/>
+        </svg>
+    </div>
+
     <div class="pub-wrap" id="root">
         <div class="loading-state"><div class="spinner"></div></div>
     </div>

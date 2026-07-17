@@ -107,8 +107,8 @@ function renderCopilotResult(result) {
                 <div>🎯 Est. leads: <strong>${result.leads.toLocaleString('en-IN')}</strong></div>
                 <div>🧮 Cost / lead: <strong>${inr(result.cost_per_lead)}</strong></div>
                 <div>💵 Est. return: <strong>${inr(result.estimated_return)}</strong></div>
-                <div>📈 Est. profit: <strong style="color:${pos ? '#43e97b' : '#f5576c'};">${inr(result.profit)}</strong></div>
-                <div>🚀 ROI: <strong style="color:${result.roi_multiple >= 1 ? '#43e97b' : '#f5a623'};">${result.roi_multiple}×</strong></div>
+                <div>📈 Est. profit: <strong style="color:${pos ? '#1A5FFF' : '#E4007C'};">${inr(result.profit)}</strong></div>
+                <div>🚀 ROI: <strong style="color:${result.roi_multiple >= 1 ? '#1A5FFF' : '#FF2D95'};">${result.roi_multiple}×</strong></div>
             </div>
             <div style="color:var(--text-muted);font-size:0.72rem;margin-top:8px;">Illustrative estimate based on expected attendance & spend share.</div>
         </div>`;
@@ -131,7 +131,7 @@ function renderCopilotResult(result) {
         return `<div style="margin-top:8px;font-size:0.95rem;">💰 Ticket revenue: <strong>₹${Math.round(result.ticket_revenue).toLocaleString('en-IN')}</strong></div>`;
     }
     if (result.event_id) {
-        return `<div style="margin-top:8px;font-size:0.85rem;color:#43e97b;">✅ Created event #${result.event_id}: <strong>${result.title}</strong></div>`;
+        return `<div style="margin-top:8px;font-size:0.85rem;color:#1A5FFF;">✅ Created event #${result.event_id}: <strong>${result.title}</strong></div>`;
     }
     return '';
 }

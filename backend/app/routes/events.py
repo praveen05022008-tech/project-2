@@ -186,6 +186,7 @@ def assign_vendor_to_event(
         role=assignment.role,
         agreed_price=assignment.agreed_price,
         status=assignment.status,
+        performance_score=assignment.performance_score or 0.0,
         vendor_name=vendor.name,
         vendor_category=vendor.category,
         created_at=assignment.created_at,
